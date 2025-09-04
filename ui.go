@@ -17,6 +17,7 @@ const (
 	green       = "\x1b[32m"
 	reset       = "\x1b[0m"
 	clear       = "\x1b[2J\x1b[H"
+	moveToTop   = "\x1b[H"
 	graphHeight = 30
 	graphChar   = "█▊" // █ ▉ ▊ ▋ ▌ ▍ ▎ ▏
 )
@@ -26,14 +27,11 @@ func initUI() (restore func()) {
 	if err != nil {
 		log.Fatal("Error setting terminal to raw mode:", err)
 	}
-
 	fmt.Print(hideCursor)
-
+	fmt.Print(clear)
 	return func() {
-		fmt.Println("Press any key to see its value (Ctrl+C to exit):")
 		term.Restore(int(os.Stdin.Fd()), oldState)
 		fmt.Print(showCursor)
-		fmt.Println("\nExiting...")
 	}
 }
 
@@ -71,7 +69,6 @@ func arrGraph(arr []int, colors []string) []string {
 			if graphHeight-i <= val {
 				output[i] += colors[j] + graphChar + reset
 			} else {
-				fmt.Println()
 				output[i] += strings.Repeat(" ", utf8.RuneCountInString(graphChar))
 			}
 		}
@@ -79,9 +76,10 @@ func arrGraph(arr []int, colors []string) []string {
 	return output
 }
 
-func printGraph(graph []string) {
-	fmt.Print(clear)
+func render(graph []string) {
+	fmt.Print(moveToTop)
+	fmt.Println("\n")
 	for _, line := range graph {
-		fmt.Println(line)
+		fmt.Println(line + "\r")
 	}
 }
