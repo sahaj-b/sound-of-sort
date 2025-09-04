@@ -4,8 +4,20 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
+	"unicode/utf8"
 
 	"golang.org/x/term"
+)
+
+const (
+	hideCursor  = "\033[?25l"
+	showCursor  = "\033[?25h"
+	red         = "\033[31m"
+	green       = "\033[32m"
+	reset       = "\033[0m"
+	graphHeight = 10
+	graphChar   = "█▊" // █ ▉ ▊ ▋ ▌ ▍ ▎ ▏
 )
 
 func initUI() (restore func()) {
@@ -38,5 +50,36 @@ func handleInput(input string) {
 	case "q", "\x03": // Ctrl+C
 		fmt.Println("\nExiting...")
 		os.Exit(0)
+	}
+}
+
+func arrGraph(arr []int, colors []string) []string {
+	if len(arr) != len(colors) {
+		log.Fatal("arr and colors must have the same length")
+	}
+	maxVal := 0
+	minVal := 0
+	for _, v := range arr {
+		maxVal = max(maxVal, v)
+		minVal = min(minVal, v)
+	}
+	output := make([]string, graphHeight)
+	for i := range output {
+		for j := range arr {
+			val := graphHeight * (arr[j] - minVal) / (maxVal - minVal)
+			if graphHeight-i <= val {
+				output[i] += colors[j] + graphChar + reset
+			} else {
+				fmt.Println()
+				output[i] += strings.Repeat(" ", utf8.RuneCountInString(graphChar))
+			}
+		}
+	}
+	return output
+}
+
+func printGraph(graph []string) {
+	for _, line := range graph {
+		fmt.Println(line)
 	}
 }
