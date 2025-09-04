@@ -11,12 +11,13 @@ import (
 )
 
 const (
-	hideCursor  = "\033[?25l"
-	showCursor  = "\033[?25h"
-	red         = "\033[31m"
-	green       = "\033[32m"
-	reset       = "\033[0m"
-	graphHeight = 10
+	hideCursor  = "\x1b[?25l"
+	showCursor  = "\x1b[?25h"
+	red         = "\x1b[31m"
+	green       = "\x1b[32m"
+	reset       = "\x1b[0m"
+	clear       = "\x1b[2J\x1b[H"
+	graphHeight = 30
 	graphChar   = "█▊" // █ ▉ ▊ ▋ ▌ ▍ ▎ ▏
 )
 
@@ -28,11 +29,11 @@ func initUI() (restore func()) {
 
 	fmt.Print(hideCursor)
 
-	fmt.Println("Press any key to see its value (Ctrl+C to exit):")
-
 	return func() {
+		fmt.Println("Press any key to see its value (Ctrl+C to exit):")
 		term.Restore(int(os.Stdin.Fd()), oldState)
 		fmt.Print(showCursor)
+		fmt.Println("\nExiting...")
 	}
 }
 
@@ -79,6 +80,7 @@ func arrGraph(arr []int, colors []string) []string {
 }
 
 func printGraph(graph []string) {
+	fmt.Print(clear)
 	for _, line := range graph {
 		fmt.Println(line)
 	}
