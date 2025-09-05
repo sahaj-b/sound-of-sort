@@ -1,56 +1,96 @@
 package main
 
-import "time"
-
-type IntArr []int
+import (
+	"context"
+	"sync/atomic"
+	"time"
+)
 
 type arrObj interface {
-	get(ind int) int
-	set(ind, val int)
-	swap(i, j int)
+	get(ctx context.Context, ind int) int
+	set(ctx context.Context, ind, val int)
+	swap(ctx context.Context, i, j int)
 	len() int
+	check(ctx context.Context)
+}
+
+type visArr struct {
+	arr       []int
+	stateChan chan<- VisState // rendering happens when this channel is sent to(state updates)
+	sortName  string
 }
 
 const (
-	delay    = 0 * time.Millisecond
 	readClr  = red
 	writeClr = green
 )
 
-func (arr *IntArr) len() int {
-	return len(*arr)
+var delay atomic.Int64
+
+func newVisualizer(arr []int, stateChan chan<- VisState, sortName string) arrObj {
+	return &visArr{
+		arr:       arr,
+		stateChan: stateChan,
+		sortName:  sortName,
+	}
 }
 
-func (arr *IntArr) get(ind int) int {
-	time.Sleep(delay)
-	colors := make([]string, len(*arr))
+func (v *visArr) check(ctx context.Context) {
+	select {
+	case <-ctx.Done():
+		panic(ctx.Err())
+	default:
+	}
+	time.Sleep(time.Duration(delay.Load()))
+}
+
+func (v *visArr) len() int {
+	return len(v.arr)
+}
+
+func (v *visArr) get(ctx context.Context, ind int) int {
+	v.check(ctx)
+	colors := make([]string, len(v.arr))
 	colors[ind] = readClr
-	render(arrGraph(*arr, colors))
-	playBeepArr((*arr)[ind])
-	return (*arr)[ind]
+
+	v.stateChan <- VisState{
+		Arr:      v.arr,
+		Colors:   colors,
+		SortName: v.sortName,
+	}
+
+	playBeepArr(v.arr[ind])
+	return v.arr[ind]
 }
 
-func (arr *IntArr) set(ind, val int) {
-	time.Sleep(delay)
-	colors := make([]string, len(*arr))
+func (v *visArr) set(ctx context.Context, ind, val int) {
+	v.check(ctx)
+	colors := make([]string, len(v.arr))
 	colors[ind] = writeClr
-	(*arr)[ind] = val
-	render(arrGraph(*arr, colors))
-	playBeepArr((*arr)[ind])
+	v.arr[ind] = val
+
+	v.stateChan <- VisState{
+		Arr:      v.arr,
+		Colors:   colors,
+		SortName: v.sortName,
+	}
+
+	playBeepArr(v.arr[ind])
 }
 
-func (arr *IntArr) swap(i, j int) {
-	time.Sleep(delay)
-	colors := make([]string, len(*arr))
+func (v *visArr) swap(ctx context.Context, i, j int) {
+	v.check(ctx)
+	colors := make([]string, len(v.arr))
 	colors[i] = writeClr
 	colors[j] = writeClr
-	(*arr)[i], (*arr)[j] = (*arr)[j], (*arr)[i]
-	render(arrGraph(*arr, colors))
-	playBeepArr((*arr)[i])
-	playBeepArr((*arr)[j])
-}
+	v.arr[i], v.arr[j] = v.arr[j], v.arr[i]
 
-func newArrObj(arr []int) arrObj {
-	a := IntArr(arr)
-	return &a
+	v.stateChan <- VisState{
+		Arr:      v.arr,
+		Colors:   colors,
+		SortName: v.sortName,
+	}
+
+	playBeepArr(v.arr[i])
+	playBeepArr(v.arr[j])
 }

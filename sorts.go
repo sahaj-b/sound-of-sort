@@ -1,76 +1,79 @@
 package main
 
-// type arrObj interface {
-// 	get(ind int) int
-// 	set(ind, val int)
-// 	swap(i, j int)
-// 	len() int
-// }
+import "context"
 
-func bubbleSort(arr arrObj, done chan struct{}) {
-	defer close(done)
+type sortFunc func(ctx context.Context, arr arrObj)
+
+var sorts = []struct {
+	name string
+	fun  sortFunc
+}{
+	{"Quick Sort", quickSort},
+	{"Bubble Sort", bubbleSort},
+	{"Selection Sort", selectionSort},
+	{"Insertion Sort", insertionSort},
+}
+
+func bubbleSort(ctx context.Context, arr arrObj) {
 	n := arr.len()
 	for i := 0; i < n-1; i++ {
 		for j := 0; j < n-i-1; j++ {
-			if arr.get(j) > arr.get(j+1) {
-				arr.swap(j, j+1)
+			if arr.get(ctx, j) > arr.get(ctx, j+1) {
+				arr.swap(ctx, j, j+1)
 			}
 		}
 	}
 }
 
-func selectionSort(arr arrObj, done chan struct{}) {
-	defer close(done)
+func selectionSort(ctx context.Context, arr arrObj) {
 	n := arr.len()
 	for i := 0; i < n-1; i++ {
 		minIdx := i
 		for j := i + 1; j < n; j++ {
-			if arr.get(j) < arr.get(minIdx) {
+			if arr.get(ctx, j) < arr.get(ctx, minIdx) {
 				minIdx = j
 			}
 		}
 		if minIdx != i {
-			arr.swap(i, minIdx)
+			arr.swap(ctx, i, minIdx)
 		}
 	}
 }
 
-func insertionSort(arr arrObj, done chan struct{}) {
-	defer close(done)
+func insertionSort(ctx context.Context, arr arrObj) {
 	n := arr.len()
 	for i := 1; i < n; i++ {
-		key := arr.get(i)
+		key := arr.get(ctx, i)
 		j := i - 1
-		for j >= 0 && arr.get(j) > key {
-			arr.set(j+1, arr.get(j))
+		for j >= 0 && arr.get(ctx, j) > key {
+			arr.set(ctx, j+1, arr.get(ctx, j))
 			j--
 		}
-		arr.set(j+1, key)
+		arr.set(ctx, j+1, key)
 	}
 }
 
-func quickSort(arr arrObj, done chan struct{}) {
-	defer close(done)
-	quickSortRecurse(arr, 0, arr.len()-1)
+func quickSort(ctx context.Context, arr arrObj) {
+	quickSortRecurse(ctx, arr, 0, arr.len()-1)
 }
 
-func quickSortRecurse(arr arrObj, low, high int) {
+func quickSortRecurse(ctx context.Context, arr arrObj, low, high int) {
 	if low < high {
-		pi := partition(arr, low, high)
-		quickSortRecurse(arr, low, pi-1)
-		quickSortRecurse(arr, pi+1, high)
+		pi := partition(ctx, arr, low, high)
+		quickSortRecurse(ctx, arr, low, pi-1)
+		quickSortRecurse(ctx, arr, pi+1, high)
 	}
 }
 
-func partition(arr arrObj, low, high int) int {
-	pivot := arr.get(high)
+func partition(ctx context.Context, arr arrObj, low, high int) int {
+	pivot := arr.get(ctx, high)
 	i := low - 1
 	for j := low; j < high; j++ {
-		if arr.get(j) < pivot {
+		if arr.get(ctx, j) < pivot {
 			i++
-			arr.swap(i, j)
+			arr.swap(ctx, i, j)
 		}
 	}
-	arr.swap(i+1, high)
+	arr.swap(ctx, i+1, high)
 	return i + 1
 }

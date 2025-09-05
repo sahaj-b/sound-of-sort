@@ -3,8 +3,11 @@ package main
 import (
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"strings"
+	"sync/atomic"
+	"time"
 	"unicode/utf8"
 
 	"golang.org/x/term"
@@ -35,6 +38,7 @@ func initUI() (restore func()) {
 	if err != nil {
 		fmt.Println("Error getting terminal size:", err)
 	}
+
 	termWidth, termHeight = width, height
 	fmt.Print(hideCursor)
 	fmt.Print(clear)
@@ -45,19 +49,76 @@ func initUI() (restore func()) {
 }
 
 func inputReader(ch chan string) {
+	defer close(ch)
 	buf := make([]byte, 3)
-	n, err := os.Stdin.Read(buf)
-	if err != nil || n == 0 {
-		close(ch)
-		return
+	for {
+		n, err := os.Stdin.Read(buf)
+		if err != nil || n == 0 {
+			close(ch)
+			return
+		}
+		ch <- string(buf[:n])
 	}
-	ch <- string(buf[:n])
 }
 
-func handleInput(input string) bool {
+func handleInput(input string, currentSortIndex *atomic.Int32) bool {
 	switch input {
 	case "q", "\x03": // Ctrl+C
 		return true
+
+	case "w": // increase delay
+		delay.Add(1 * int64(time.Millisecond))
+
+	case "s": // decrease delay
+		// Use a CAS loop to prevent it from going below zero.
+		for {
+			currentDelay := delay.Load()
+
+			newDelay := max(0, currentDelay-(2*int64(time.Millisecond)))
+
+			// this returns false if the currentDelay got changed since we loaded it
+			if delay.CompareAndSwap(currentDelay, newDelay) {
+				break
+			}
+		}
+
+	case "A", "\x1b[A": // Up arrow
+		// CAS loop for float volume increase.
+		for {
+			oldBits := volume.Load()
+			oldFloat := math.Float64frombits(oldBits)
+
+			newFloat := min(oldFloat+0.005, 1.0)
+
+			newBits := math.Float64bits(newFloat)
+			if volume.CompareAndSwap(oldBits, newBits) {
+				break
+			}
+		}
+
+	case "B", "\x1b[B": // Down arrow
+		// CAS loop for float volume decrease.
+		for {
+			oldBits := volume.Load()
+			oldFloat := math.Float64frombits(oldBits)
+
+			newFloat := max(0.0, oldFloat-0.01)
+
+			newBits := math.Float64bits(newFloat)
+			if volume.CompareAndSwap(oldBits, newBits) {
+				break
+			}
+		}
+
+	case "p", "\x1b[D": // Left arrow
+		newIndex := currentSortIndex.Add(1)
+		currentSortIndex.Store(newIndex % int32(len(sorts)))
+	case "n", "\x1b[C": // Right arrow
+		newIndex := currentSortIndex.Add(-1)
+		if newIndex < 0 {
+			newIndex = int32(len(sorts) - 1)
+		}
+		currentSortIndex.Store(newIndex)
 	}
 	return false
 }
@@ -67,7 +128,7 @@ func arrGraph(arr []int, colors []string) []string {
 	if len(arr) != len(colors) {
 		log.Fatal("arr and colors must have the same length")
 	}
-	graphChar := "█▊" // █ ▉ ▊ ▋ ▌
+	graphChar := "█▊" // █ ▇ ▉ ▊ ▋ ▌
 	if termWidth < 2*len(arr) {
 		graphChar = "▊"
 	}
@@ -91,9 +152,17 @@ func arrGraph(arr []int, colors []string) []string {
 	return output
 }
 
-func render(graph []string) {
+func render(graph []string, sortName string, currentDelay time.Duration, currentVol float64) {
 	fmt.Print(moveToTop)
-	fmt.Println()
+	sortStr := "←/→: " + sortName
+	volumeStr := "↑/↓ Volume: " + fmt.Sprintf("%.1f", currentVol*100)
+	delayStr := "w/s Delay: " + currentDelay.String()
+	quitStr := "q / Ctrl+C to quit"
+
+	statusStr := sortStr + " | " + volumeStr + " | " + delayStr + " | " + quitStr
+	paddingNeeded := max(0, (termWidth-len(statusStr))/2)
+	statusPadding := strings.Repeat(" ", paddingNeeded)
+	fmt.Println(statusPadding + statusStr + "\r")
 	for _, line := range graph {
 		fmt.Println(line + "\r")
 	}

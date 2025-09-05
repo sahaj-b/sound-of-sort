@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"sync/atomic"
 	"time"
 
 	"github.com/gopxl/beep"
@@ -11,7 +12,6 @@ import (
 
 const (
 	sampleRate    = beep.SampleRate(24100)
-	volume        = 0.1
 	soundDuration = 30 * time.Millisecond
 	minPitch      = 200.0
 	maxPitch      = 1200.0
@@ -20,6 +20,7 @@ const (
 var (
 	minVal = 1
 	maxVal = 100
+	volume atomic.Uint64
 )
 
 func setArrBounds(min, max int) {
@@ -39,6 +40,7 @@ func playSine(pitch float64, duration time.Duration) {
 	numSamples := sampleRate.N(duration)
 
 	position := 0
+	currentVol := math.Float64frombits(volume.Load())
 
 	streamer := beep.StreamerFunc(func(samples [][2]float64) (n int, ok bool) {
 		if position >= numSamples {
@@ -66,7 +68,7 @@ func playSine(pitch float64, duration time.Duration) {
 			}
 
 			phase := float64(position)
-			value := volume * envelopeMultiplier * math.Sin(2*math.Pi*pitch*phase/float64(sampleRate))
+			value := float64(currentVol) * envelopeMultiplier * math.Sin(2*math.Pi*pitch*phase/float64(sampleRate))
 			samples[i][0] = value
 			samples[i][1] = value
 
@@ -75,12 +77,10 @@ func playSine(pitch float64, duration time.Duration) {
 		return count, true
 	})
 
-	// Just play the damn sound. No waiting.
 	speaker.Play(streamer)
 }
 
 func playBeepArr(val int) {
-	// Map the array value to the pitch, not the index. This sounds better.
 	pitch := minPitch + (maxPitch-minPitch)*float64(val-minVal)/float64(maxVal-minVal)
 	playSine(pitch, soundDuration)
 }
