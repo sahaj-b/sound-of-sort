@@ -156,14 +156,28 @@ func arrGraph(arr []int, colors []string) []string {
 
 func render(graph []string, sortName string, currentDelay time.Duration, currentVol float64, currentSize int) {
 	fmt.Print(moveToTop)
-	sortStr := "←/→: " + sortName
-	volumeStr := "↑/↓ Volume: " + fmt.Sprintf("%.1f", currentVol*100)
-	delayStr := "w/s Delay: " + currentDelay.String()
-	sizeStr := fmt.Sprintf("a/d Arr Size: %d", currentSize)
-	quitStr := "q / Ctrl+C to quit"
+	// sortStr := "←/→: " + sortName
+	// volumeStr := "↑/↓ Volume: " + fmt.Sprintf("%.1f", currentVol*100)
+	// delayStr := "w/s Delay: " + currentDelay.String()
+	// sizeStr := fmt.Sprintf("a/d Arr Size: %d", currentSize)
+	// reshuffleStr := "r to reshuffle"
+	// quitStr := "q to quit"
+	statusStrs := []string{
+		"←/→: " + sortName,
+		"↑/↓ Volume: " + fmt.Sprintf("%.1f", currentVol*100),
+		"w/s Delay: " + currentDelay.String(),
+		fmt.Sprintf("a/d Arr Size: %d", currentSize),
+		"r to reshuffle",
+		"q to quit",
+	}
 
-	statusStr := bggray + cyan + " " + sortStr + " " + reset + " " + bggray + cyan + " " + volumeStr + " " + reset + " " + bggray + cyan + " " + delayStr + " " + reset + " " + bggray + cyan + " " + sizeStr + " " + reset + " " + bggray + red + " " + quitStr + " " + reset
-	statusLen := len(volumeStr) + len(delayStr) + len(sizeStr) + len(sortStr) + len(quitStr) + 3*5
+	n := len(statusStrs)
+	statusStr := bggray + cyan + " " + strings.Join(statusStrs[:n-1], " "+reset+" "+bggray+" "+cyan) + " " + reset + " " + bggray + red + " " + statusStrs[n-1] + " " + reset
+	statusLen := 0
+	for _, s := range statusStrs {
+		statusLen += len(s)
+	}
+	statusLen += 3 * (len(statusStrs) - 1)
 	statusPadding := max(0, (termWidth-statusLen)/2)
 	fmt.Println(strings.Repeat(" ", statusPadding) + statusStr + "\r\n\r")
 	graphWidth := utf8.RuneCountInString(graphChar) * currentSize
