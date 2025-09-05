@@ -63,7 +63,7 @@ func inputReader(ch chan string) {
 	}
 }
 
-func handleInput(input string, currentSortIndex *atomic.Int32, currentSize *atomic.Int32, shuffleRequested *atomic.Bool) bool {
+func handleInput(input string, currentSortIndex *atomic.Int32, currentSize *atomic.Int32, shuffleRequested *atomic.Bool, delay *atomic.Int64, volume *atomic.Uint64) bool {
 	switch input {
 	case "q", "\x03": // Ctrl+C
 		return true
@@ -132,17 +132,16 @@ func arrGraph(arr []int, colors []string) []string {
 	if termWidth < 2*len(arr) {
 		graphChar = "▊"
 	}
-	maxVal := 0
-	minVal := 0
-	for _, v := range arr {
-		maxVal = max(maxVal, v)
-		minVal = min(minVal, v)
-	}
 	output := make([]string, graphHeight)
+	denom := maxVal - minVal
+	if denom == 0 {
+		denom = 1
+	}
+
 	for i := range output {
 		for j := range arr {
-			val := graphHeight * (arr[j] - minVal) / (maxVal - minVal)
-			if graphHeight-i <= val {
+			val := graphHeight * (arr[j] - minVal) / denom
+			if graphHeight-i <= val || i == graphHeight-1 {
 				output[i] += colors[j] + graphChar + reset
 			} else {
 				output[i] += strings.Repeat(" ", utf8.RuneCountInString(graphChar))

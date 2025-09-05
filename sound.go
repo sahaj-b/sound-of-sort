@@ -15,13 +15,12 @@ const (
 	soundDuration   = 25 * time.Millisecond
 	minPitch        = 200.0
 	maxPitch        = 1200.0
-	minBeepInterval = 10 * time.Millisecond
+	minBeepInterval = 5 * time.Millisecond
 )
 
 var (
 	minVal       = 1
 	maxVal       = 100
-	volume       atomic.Uint64
 	lastBeepTime atomic.Int64
 )
 
@@ -38,7 +37,7 @@ func initAudio() {
 	}
 }
 
-func playSine(pitch float64, duration time.Duration) {
+func playSine(pitch float64, duration time.Duration, volume *atomic.Uint64) {
 	numSamples := sampleRate.N(duration)
 
 	position := 0
@@ -82,8 +81,7 @@ func playSine(pitch float64, duration time.Duration) {
 	speaker.Play(streamer)
 }
 
-// MODIFIED THIS FUNCTION
-func playBeepArr(val int) {
+func playBeepArr(val int, volume *atomic.Uint64) {
 	now := time.Now().UnixNano()
 	last := lastBeepTime.Load()
 
@@ -96,5 +94,5 @@ func playBeepArr(val int) {
 	}
 
 	pitch := minPitch + (maxPitch-minPitch)*float64(val-minVal)/float64(maxVal-minVal)
-	playSine(pitch, soundDuration)
+	playSine(pitch, soundDuration, volume)
 }
