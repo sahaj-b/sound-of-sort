@@ -1,10 +1,6 @@
 # Sound of Sort
 
-<div align="center">
-  <video src="demo.mp4" controls width=800></video>
-
-</div>
-
+https://github.com/user-attachments/assets/0fe81ea9-1ae5-420b-8c6c-aabd3ddf87ea
 
 This is a Go-based terminal application that visualizes and sonifies a whole bunch of sorting algorithms, inspired by [Sound of Sorting](https://panthema.net/2013/sound-of-sorting/). 
 
