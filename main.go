@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"sync"
 	"sync/atomic"
@@ -20,6 +21,8 @@ func main() {
 	initAudio()
 
 	var currentSortIndex atomic.Int32
+	var currentSize atomic.Int32
+	var shuffleRequested atomic.Bool
 	delay.Store(int64(2 * time.Millisecond))
 	volume.Store(math.Float64bits(0.1))
 
@@ -27,6 +30,7 @@ func main() {
 	go inputReader(inputChan)
 
 	const arrSize = 150
+	currentSize.Store(int32(arrSize))
 	originalArr := getSequenceArr(1, arrSize)
 	setArrBounds(1, arrSize)
 	shuffleArr(originalArr)
@@ -44,9 +48,12 @@ func main() {
 				state.SortName,
 				time.Duration(delay.Load()),
 				math.Float64frombits(volume.Load()),
+				int(currentSize.Load()),
 			)
 		}
 	}()
+
+	previousSize := currentSize.Load()
 
 	for {
 		select {
@@ -54,6 +61,17 @@ func main() {
 			return
 		default:
 		}
+
+		currentSizeVal := currentSize.Load()
+		if currentSizeVal != previousSize || shuffleRequested.Load() {
+			originalArr = getSequenceArr(1, int(currentSizeVal))
+			setArrBounds(1, int(currentSizeVal))
+			shuffleArr(originalArr)
+			previousSize = currentSizeVal
+			shuffleRequested.Store(false)
+		}
+
+		fmt.Print(clear)
 
 		arrToSort := make([]int, len(originalArr))
 		copy(arrToSort, originalArr)
@@ -93,13 +111,23 @@ func main() {
 		for {
 			select {
 			case input := <-inputChan:
-				if handleInput(input, &currentSortIndex) {
+				if handleInput(input, &currentSortIndex, &currentSize, &shuffleRequested) {
 					appCancel()
 					sortCancel()
 					break inputLoop
 				}
 
 				if currentIndex != currentSortIndex.Load() {
+					sortCancel()
+					break inputLoop
+				}
+
+				if currentSizeVal != currentSize.Load() {
+					sortCancel()
+					break inputLoop
+				}
+
+				if shuffleRequested.Load() {
 					sortCancel()
 					break inputLoop
 				}

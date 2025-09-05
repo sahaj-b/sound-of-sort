@@ -26,6 +26,7 @@ const (
 var (
 	termWidth  int
 	termHeight int
+	graphChar  string
 )
 
 func initUI() (restore func()) {
@@ -61,7 +62,7 @@ func inputReader(ch chan string) {
 	}
 }
 
-func handleInput(input string, currentSortIndex *atomic.Int32) bool {
+func handleInput(input string, currentSortIndex *atomic.Int32, currentSize *atomic.Int32, shuffleRequested *atomic.Bool) bool {
 	switch input {
 	case "q", "\x03": // Ctrl+C
 		return true
@@ -83,32 +84,19 @@ func handleInput(input string, currentSortIndex *atomic.Int32) bool {
 		}
 
 	case "A", "\x1b[A": // Up arrow
-		// CAS loop for float volume increase.
-		for {
-			oldBits := volume.Load()
-			oldFloat := math.Float64frombits(oldBits)
+		oldBits := volume.Load()
+		oldFloat := math.Float64frombits(oldBits)
 
-			newFloat := min(oldFloat+0.005, 1.0)
+		newFloat := min(oldFloat+0.005, 1.0)
 
-			newBits := math.Float64bits(newFloat)
-			if volume.CompareAndSwap(oldBits, newBits) {
-				break
-			}
-		}
+		newBits := math.Float64bits(newFloat)
+		volume.Store(newBits)
 
 	case "B", "\x1b[B": // Down arrow
-		// CAS loop for float volume decrease.
-		for {
-			oldBits := volume.Load()
-			oldFloat := math.Float64frombits(oldBits)
-
-			newFloat := max(0.0, oldFloat-0.01)
-
-			newBits := math.Float64bits(newFloat)
-			if volume.CompareAndSwap(oldBits, newBits) {
-				break
-			}
-		}
+		oldFloat := math.Float64frombits(volume.Load())
+		newFloat := max(0.0, oldFloat-0.01)
+		newBits := math.Float64bits(newFloat)
+		volume.Store(newBits)
 
 	case "p", "\x1b[D": // Left arrow
 		newIndex := currentSortIndex.Add(1)
@@ -119,6 +107,17 @@ func handleInput(input string, currentSortIndex *atomic.Int32) bool {
 			newIndex = int32(len(sorts) - 1)
 		}
 		currentSortIndex.Store(newIndex)
+
+	case "a": // decrease array size
+		newSize := max(0, currentSize.Add(-10))
+		currentSize.Store(newSize)
+
+	case "d": // increase array size
+		newSize := min(500, currentSize.Add(10))
+		currentSize.Store(newSize)
+
+	case "r": // shuffle array
+		shuffleRequested.Store(true)
 	}
 	return false
 }
@@ -128,7 +127,7 @@ func arrGraph(arr []int, colors []string) []string {
 	if len(arr) != len(colors) {
 		log.Fatal("arr and colors must have the same length")
 	}
-	graphChar := "█▊" // █ ▇ ▉ ▊ ▋ ▌
+	graphChar = "█▊" // █ ▇ ▉ ▊ ▋ ▌
 	if termWidth < 2*len(arr) {
 		graphChar = "▊"
 	}
@@ -152,18 +151,20 @@ func arrGraph(arr []int, colors []string) []string {
 	return output
 }
 
-func render(graph []string, sortName string, currentDelay time.Duration, currentVol float64) {
+func render(graph []string, sortName string, currentDelay time.Duration, currentVol float64, currentSize int) {
 	fmt.Print(moveToTop)
 	sortStr := "←/→: " + sortName
 	volumeStr := "↑/↓ Volume: " + fmt.Sprintf("%.1f", currentVol*100)
 	delayStr := "w/s Delay: " + currentDelay.String()
+	sizeStr := fmt.Sprintf("a/d Arr Size: %d", currentSize)
 	quitStr := "q / Ctrl+C to quit"
 
-	statusStr := sortStr + " | " + volumeStr + " | " + delayStr + " | " + quitStr
-	paddingNeeded := max(0, (termWidth-len(statusStr))/2)
-	statusPadding := strings.Repeat(" ", paddingNeeded)
-	fmt.Println(statusPadding + statusStr + "\r")
+	statusStr := sortStr + " | " + volumeStr + " | " + delayStr + " | " + sizeStr + " | " + quitStr
+	statusPadding := max(0, (termWidth-len(statusStr))/2)
+	fmt.Println(strings.Repeat(" ", statusPadding) + statusStr + "\r")
+	graphWidth := utf8.RuneCountInString(graphChar) * currentSize
+	graphPadding := max(0, (termWidth-graphWidth)/2)
 	for _, line := range graph {
-		fmt.Println(line + "\r")
+		fmt.Println(strings.Repeat(" ", graphPadding) + line + "\r")
 	}
 }
