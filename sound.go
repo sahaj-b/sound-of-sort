@@ -11,16 +11,18 @@ import (
 )
 
 const (
-	sampleRate    = beep.SampleRate(24100)
-	soundDuration = 30 * time.Millisecond
-	minPitch      = 200.0
-	maxPitch      = 1200.0
+	sampleRate      = beep.SampleRate(24100)
+	soundDuration   = 25 * time.Millisecond
+	minPitch        = 200.0
+	maxPitch        = 1200.0
+	minBeepInterval = 10 * time.Millisecond
 )
 
 var (
-	minVal = 1
-	maxVal = 100
-	volume atomic.Uint64
+	minVal       = 1
+	maxVal       = 100
+	volume       atomic.Uint64
+	lastBeepTime atomic.Int64
 )
 
 func setArrBounds(min, max int) {
@@ -80,7 +82,19 @@ func playSine(pitch float64, duration time.Duration) {
 	speaker.Play(streamer)
 }
 
+// MODIFIED THIS FUNCTION
 func playBeepArr(val int) {
+	now := time.Now().UnixNano()
+	last := lastBeepTime.Load()
+
+	if now-last < minBeepInterval.Nanoseconds() {
+		return
+	}
+
+	if !lastBeepTime.CompareAndSwap(last, now) {
+		return
+	}
+
 	pitch := minPitch + (maxPitch-minPitch)*float64(val-minVal)/float64(maxVal-minVal)
 	playSine(pitch, soundDuration)
 }

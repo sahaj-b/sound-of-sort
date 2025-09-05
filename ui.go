@@ -20,6 +20,7 @@ const (
 	green      = "\x1b[32m"
 	reset      = "\x1b[0m"
 	clear      = "\x1b[2J\x1b[H"
+	clearLine  = "\x1b[K"
 	moveToTop  = "\x1b[H"
 )
 
@@ -68,14 +69,14 @@ func handleInput(input string, currentSortIndex *atomic.Int32, currentSize *atom
 		return true
 
 	case "w": // increase delay
-		delay.Add(1 * int64(time.Millisecond))
+		delay.Add(100 * int64(time.Microsecond))
 
 	case "s": // decrease delay
-		// Use a CAS loop to prevent it from going below zero.
+		// use a CAS loop
 		for {
 			currentDelay := delay.Load()
 
-			newDelay := max(0, currentDelay-(2*int64(time.Millisecond)))
+			newDelay := max(50*int64(time.Microsecond), currentDelay-(100*int64(time.Microsecond)))
 
 			// this returns false if the currentDelay got changed since we loaded it
 			if delay.CompareAndSwap(currentDelay, newDelay) {
@@ -113,7 +114,7 @@ func handleInput(input string, currentSortIndex *atomic.Int32, currentSize *atom
 		currentSize.Store(newSize)
 
 	case "d": // increase array size
-		newSize := min(500, currentSize.Add(10))
+		newSize := currentSize.Add(10)
 		currentSize.Store(newSize)
 
 	case "r": // shuffle array
@@ -161,10 +162,10 @@ func render(graph []string, sortName string, currentDelay time.Duration, current
 
 	statusStr := sortStr + " | " + volumeStr + " | " + delayStr + " | " + sizeStr + " | " + quitStr
 	statusPadding := max(0, (termWidth-len(statusStr))/2)
-	fmt.Println(strings.Repeat(" ", statusPadding) + statusStr + "\r")
+	fmt.Println(strings.Repeat(" ", statusPadding) + statusStr + "\r\n\r")
 	graphWidth := utf8.RuneCountInString(graphChar) * currentSize
 	graphPadding := max(0, (termWidth-graphWidth)/2)
 	for _, line := range graph {
-		fmt.Println(strings.Repeat(" ", graphPadding) + line + "\r")
+		fmt.Println(strings.Repeat(" ", graphPadding) + line + clearLine + "\r")
 	}
 }

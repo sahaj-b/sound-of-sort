@@ -6,12 +6,13 @@ type sortFunc func(ctx context.Context, arr arrObj)
 
 var sorts = []struct {
 	name string
+	arg  string
 	fun  sortFunc
 }{
-	{"Quick Sort", quickSort},
-	{"Bubble Sort", bubbleSort},
-	{"Selection Sort", selectionSort},
-	{"Insertion Sort", insertionSort},
+	{"Quick Sort", "quick", quickSort},
+	{"Bubble Sort", "bubble", bubbleSort},
+	{"Selection Sort", "selection", selectionSort},
+	{"Insertion Sort", "insertion", insertionSort},
 }
 
 func bubbleSort(ctx context.Context, arr arrObj) {

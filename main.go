@@ -16,6 +16,10 @@ type VisState struct {
 }
 
 func main() {
+	if parseArgs() {
+		return
+	}
+
 	restoreUI := initUI()
 	defer restoreUI()
 	initAudio()
@@ -23,13 +27,21 @@ func main() {
 	var currentSortIndex atomic.Int32
 	var currentSize atomic.Int32
 	var shuffleRequested atomic.Bool
-	delay.Store(int64(2 * time.Millisecond))
-	volume.Store(math.Float64bits(0.1))
+
+	delay.Store(int64(time.Duration(*initialDelay) * time.Millisecond))
+	volume.Store(math.Float64bits(*initialVolume))
+	fps := *fpsFlag
+	for i, s := range sorts {
+		if s.arg == *initialSort {
+			currentSortIndex.Store(int32(i))
+			break
+		}
+	}
 
 	inputChan := make(chan string, 1)
 	go inputReader(inputChan)
 
-	const arrSize = 150
+	arrSize := *initialSize
 	currentSize.Store(int32(arrSize))
 	originalArr := getSequenceArr(1, arrSize)
 	setArrBounds(1, arrSize)
@@ -79,32 +91,40 @@ func main() {
 		currentIndex := currentSortIndex.Load()
 		currentSortName := sorts[currentIndex].name
 
-		arr := newVisualizer(arrToSort, stateChan, currentSortName)
+		arr := newVisualizer(arrToSort)
 
 		sortCtx, sortCancel := context.WithCancel(appCtx)
 		var wg sync.WaitGroup
-		wg.Add(1)
+		wg.Add(2)
 
 		go func() {
-			// sort goroutine
 			defer wg.Done()
 			defer func() {
-				// recover from context.Canceled panic
 				if r := recover(); r != nil && r != context.Canceled {
 					panic(r)
 				}
 			}()
-
-			// initial state render
-			stateChan <- VisState{Arr: arrToSort, Colors: make([]string, len(arrToSort)), SortName: currentSortName}
 			sorts[currentIndex].fun(sortCtx, arr)
+		}()
 
-			// final state render (all green bby)
-			finalColors := make([]string, len(arrToSort))
-			for i := range finalColors {
-				finalColors[i] = green
+		go func() {
+			defer wg.Done()
+			ticker := time.NewTicker(time.Second / time.Duration(fps))
+			defer ticker.Stop()
+
+			for {
+				select {
+				case <-ticker.C:
+					currentArr, currentColors := arr.getState()
+					stateChan <- VisState{
+						Arr:      currentArr,
+						Colors:   currentColors,
+						SortName: currentSortName,
+					}
+				case <-sortCtx.Done():
+					return
+				}
 			}
-			stateChan <- VisState{Arr: arrToSort, Colors: finalColors, SortName: currentSortName}
 		}()
 
 	inputLoop:
@@ -117,17 +137,9 @@ func main() {
 					break inputLoop
 				}
 
-				if currentIndex != currentSortIndex.Load() {
-					sortCancel()
-					break inputLoop
-				}
-
-				if currentSizeVal != currentSize.Load() {
-					sortCancel()
-					break inputLoop
-				}
-
-				if shuffleRequested.Load() {
+				if currentIndex != currentSortIndex.Load() ||
+					currentSizeVal != currentSize.Load() ||
+					shuffleRequested.Load() {
 					sortCancel()
 					break inputLoop
 				}
@@ -141,5 +153,12 @@ func main() {
 		}
 
 		wg.Wait()
+
+		finalArr, _ := arr.getState()
+		finalColors := make([]string, len(finalArr))
+		for i := range finalColors {
+			finalColors[i] = green
+		}
+		stateChan <- VisState{Arr: finalArr, Colors: finalColors, SortName: currentSortName}
 	}
 }
