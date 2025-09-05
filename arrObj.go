@@ -12,7 +12,9 @@ type arrObj interface {
 }
 
 const (
-	delay = 5 * time.Millisecond
+	delay    = 0 * time.Millisecond
+	readClr  = red
+	writeClr = green
 )
 
 func (arr *IntArr) len() int {
@@ -22,26 +24,30 @@ func (arr *IntArr) len() int {
 func (arr *IntArr) get(ind int) int {
 	time.Sleep(delay)
 	colors := make([]string, len(*arr))
-	colors[ind] = green
+	colors[ind] = readClr
 	render(arrGraph(*arr, colors))
+	playBeepArr((*arr)[ind])
 	return (*arr)[ind]
 }
 
 func (arr *IntArr) set(ind, val int) {
 	time.Sleep(delay)
 	colors := make([]string, len(*arr))
-	colors[ind] = red
+	colors[ind] = writeClr
 	(*arr)[ind] = val
 	render(arrGraph(*arr, colors))
+	playBeepArr((*arr)[ind])
 }
 
 func (arr *IntArr) swap(i, j int) {
 	time.Sleep(delay)
 	colors := make([]string, len(*arr))
-	colors[i] = red
-	colors[j] = red
+	colors[i] = writeClr
+	colors[j] = writeClr
 	(*arr)[i], (*arr)[j] = (*arr)[j], (*arr)[i]
 	render(arrGraph(*arr, colors))
+	playBeepArr((*arr)[i])
+	playBeepArr((*arr)[j])
 }
 
 func newArrObj(arr []int) arrObj {

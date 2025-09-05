@@ -11,15 +11,18 @@ import (
 )
 
 const (
-	hideCursor  = "\x1b[?25l"
-	showCursor  = "\x1b[?25h"
-	red         = "\x1b[31m"
-	green       = "\x1b[32m"
-	reset       = "\x1b[0m"
-	clear       = "\x1b[2J\x1b[H"
-	moveToTop   = "\x1b[H"
-	graphHeight = 30
-	graphChar   = "█▊" // █ ▉ ▊ ▋ ▌ ▍ ▎ ▏
+	hideCursor = "\x1b[?25l"
+	showCursor = "\x1b[?25h"
+	red        = "\x1b[31m"
+	green      = "\x1b[32m"
+	reset      = "\x1b[0m"
+	clear      = "\x1b[2J\x1b[H"
+	moveToTop  = "\x1b[H"
+)
+
+var (
+	termWidth  int
+	termHeight int
 )
 
 func initUI() (restore func()) {
@@ -27,6 +30,12 @@ func initUI() (restore func()) {
 	if err != nil {
 		log.Fatal("Error setting terminal to raw mode:", err)
 	}
+
+	width, height, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil {
+		fmt.Println("Error getting terminal size:", err)
+	}
+	termWidth, termHeight = width, height
 	fmt.Print(hideCursor)
 	fmt.Print(clear)
 	return func() {
@@ -35,26 +44,32 @@ func initUI() (restore func()) {
 	}
 }
 
-func getInput() (string, error) {
+func inputReader(ch chan string) {
 	buf := make([]byte, 3)
 	n, err := os.Stdin.Read(buf)
 	if err != nil || n == 0 {
-		return "", err
+		close(ch)
+		return
 	}
-	return string(buf[:n]), nil
+	ch <- string(buf[:n])
 }
 
-func handleInput(input string) {
+func handleInput(input string) bool {
 	switch input {
 	case "q", "\x03": // Ctrl+C
-		fmt.Println("\nExiting...")
-		os.Exit(0)
+		return true
 	}
+	return false
 }
 
 func arrGraph(arr []int, colors []string) []string {
+	graphHeight := termHeight - 3
 	if len(arr) != len(colors) {
 		log.Fatal("arr and colors must have the same length")
+	}
+	graphChar := "█▊" // █ ▉ ▊ ▋ ▌
+	if termWidth < 2*len(arr) {
+		graphChar = "▊"
 	}
 	maxVal := 0
 	minVal := 0
@@ -78,7 +93,7 @@ func arrGraph(arr []int, colors []string) []string {
 
 func render(graph []string) {
 	fmt.Print(moveToTop)
-	fmt.Println("\n")
+	fmt.Println()
 	for _, line := range graph {
 		fmt.Println(line + "\r")
 	}

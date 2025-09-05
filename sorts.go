@@ -7,7 +7,8 @@ package main
 // 	len() int
 // }
 
-func bubbleSort(arr arrObj) {
+func bubbleSort(arr arrObj, done chan struct{}) {
+	defer close(done)
 	n := arr.len()
 	for i := 0; i < n-1; i++ {
 		for j := 0; j < n-i-1; j++ {
@@ -18,7 +19,8 @@ func bubbleSort(arr arrObj) {
 	}
 }
 
-func selectionSort(arr arrObj) {
+func selectionSort(arr arrObj, done chan struct{}) {
+	defer close(done)
 	n := arr.len()
 	for i := 0; i < n-1; i++ {
 		minIdx := i
@@ -33,7 +35,8 @@ func selectionSort(arr arrObj) {
 	}
 }
 
-func insertionSort(arr arrObj) {
+func insertionSort(arr arrObj, done chan struct{}) {
+	defer close(done)
 	n := arr.len()
 	for i := 1; i < n; i++ {
 		key := arr.get(i)
@@ -46,11 +49,16 @@ func insertionSort(arr arrObj) {
 	}
 }
 
-func quickSort(arr arrObj, low, high int) {
+func quickSort(arr arrObj, done chan struct{}) {
+	defer close(done)
+	quickSortRecurse(arr, 0, arr.len()-1)
+}
+
+func quickSortRecurse(arr arrObj, low, high int) {
 	if low < high {
 		pi := partition(arr, low, high)
-		quickSort(arr, low, pi-1)
-		quickSort(arr, pi+1, high)
+		quickSortRecurse(arr, low, pi-1)
+		quickSortRecurse(arr, pi+1, high)
 	}
 }
 
