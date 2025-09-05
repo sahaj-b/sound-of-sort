@@ -10,6 +10,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/sahaj-b/sound-of-sort/algos"
 	"golang.org/x/term"
 )
 
@@ -22,6 +23,8 @@ const (
 	clear      = "\x1b[2J\x1b[H"
 	clearLine  = "\x1b[K"
 	moveToTop  = "\x1b[H"
+	bggray     = "\x1b[48;5;236m"
+	cyan       = "\x1b[36m"
 )
 
 var (
@@ -101,11 +104,11 @@ func handleInput(input string, currentSortIndex *atomic.Int32, currentSize *atom
 
 	case "p", "\x1b[D": // Left arrow
 		newIndex := currentSortIndex.Add(1)
-		currentSortIndex.Store(newIndex % int32(len(sorts)))
+		currentSortIndex.Store(newIndex % int32(len(algos.Sorts)))
 	case "n", "\x1b[C": // Right arrow
 		newIndex := currentSortIndex.Add(-1)
 		if newIndex < 0 {
-			newIndex = int32(len(sorts) - 1)
+			newIndex = int32(len(algos.Sorts) - 1)
 		}
 		currentSortIndex.Store(newIndex)
 
@@ -159,8 +162,9 @@ func render(graph []string, sortName string, currentDelay time.Duration, current
 	sizeStr := fmt.Sprintf("a/d Arr Size: %d", currentSize)
 	quitStr := "q / Ctrl+C to quit"
 
-	statusStr := sortStr + " | " + volumeStr + " | " + delayStr + " | " + sizeStr + " | " + quitStr
-	statusPadding := max(0, (termWidth-len(statusStr))/2)
+	statusStr := bggray + cyan + " " + sortStr + " " + reset + " " + bggray + cyan + " " + volumeStr + " " + reset + " " + bggray + cyan + " " + delayStr + " " + reset + " " + bggray + cyan + " " + sizeStr + " " + reset + " " + bggray + red + " " + quitStr + " " + reset
+	statusLen := len(volumeStr) + len(delayStr) + len(sizeStr) + len(sortStr) + len(quitStr) + 3*5
+	statusPadding := max(0, (termWidth-statusLen)/2)
 	fmt.Println(strings.Repeat(" ", statusPadding) + statusStr + "\r\n\r")
 	graphWidth := utf8.RuneCountInString(graphChar) * currentSize
 	graphPadding := max(0, (termWidth-graphWidth)/2)

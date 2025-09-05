@@ -2,6 +2,8 @@ package main
 
 import (
 	"flag"
+
+	"github.com/sahaj-b/sound-of-sort/algos"
 )
 
 var (
@@ -38,7 +40,7 @@ func parseArgs() bool {
 
 func printAvailableSorts() {
 	println("Available sorting algorithms:")
-	for _, s := range sorts {
-		println("-", s.name, "(arg:", s.arg+")")
+	for _, s := range algos.Sorts {
+		println("-", s.Name, "(arg:", s.Arg+")")
 	}
 }

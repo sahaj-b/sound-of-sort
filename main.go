@@ -8,6 +8,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/sahaj-b/sound-of-sort/algos"
 )
 
 type VisState struct {
@@ -47,8 +49,8 @@ func NewApp() *App {
 
 	app.delay.Store(int64(time.Duration(*initialDelay) * time.Millisecond))
 	app.volume.Store(math.Float64bits(*initialVolume))
-	for i, s := range sorts {
-		if s.arg == *initialSort {
+	for i, s := range algos.Sorts {
+		if s.Arg == *initialSort {
 			app.currentSortIndex.Store(int32(i))
 			break
 		}
@@ -113,7 +115,7 @@ func (app *App) runSortCycle() bool {
 	copy(arrToSort, app.originalArr)
 
 	currentIndex := app.currentSortIndex.Load()
-	currentSortName := sorts[currentIndex].name
+	currentSortName := algos.Sorts[currentIndex].Name
 
 	arr := newVisualizer(arrToSort, &app.delay, &app.volume)
 	sortCtx, sortCancel := context.WithCancel(app.ctx)
@@ -129,7 +131,7 @@ func (app *App) runSortCycle() bool {
 				panic(r)
 			}
 		}()
-		sorts[currentIndex].fun(sortCtx, arr)
+		algos.Sorts[currentIndex].Fun(sortCtx, arr)
 	}()
 
 	go func() {
@@ -140,13 +142,13 @@ func (app *App) runSortCycle() bool {
 		for {
 			select {
 			case <-ticker.C:
-				currentArr, currentColors := arr.getState()
+				currentArr, currentColors := arr.GetState()
 				app.stateChan <- VisState{
 					Arr:      currentArr,
 					Colors:   currentColors,
 					SortName: currentSortName,
 				}
-				arr.clearColors()
+				arr.ClearColors()
 			case <-sortCtx.Done():
 				return
 			}
