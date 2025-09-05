@@ -146,6 +146,7 @@ func (app *App) runSortCycle() bool {
 					Colors:   currentColors,
 					SortName: currentSortName,
 				}
+				arr.clearColors()
 			case <-sortCtx.Done():
 				return
 			}
@@ -175,14 +176,6 @@ inputLoop:
 	}
 
 	wg.Wait()
-
-	// Render the final green state
-	finalArr, _ := arr.getState()
-	finalColors := make([]string, len(finalArr))
-	for i := range finalColors {
-		finalColors[i] = green
-	}
-	app.stateChan <- VisState{Arr: finalArr, Colors: finalColors, SortName: currentSortName}
 
 	return true
 }

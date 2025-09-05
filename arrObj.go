@@ -13,6 +13,7 @@ type arrObj interface {
 	swap(ctx context.Context, i, j int)
 	len() int
 	getState() ([]int, []string)
+	clearColors()
 	check(ctx context.Context)
 }
 
@@ -54,6 +55,12 @@ func (v *visArr) len() int {
 	return len(v.arr)
 }
 
+func (v *visArr) clearColors() {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	v.colors = make([]string, len(v.arr))
+}
+
 func (v *visArr) getState() ([]int, []string) {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
@@ -71,7 +78,6 @@ func (v *visArr) get(ctx context.Context, ind int) int {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
 
-	v.colors = make([]string, len(v.arr))
 	v.colors[ind] = readClr
 	playBeepArr(v.arr[ind], v.volume)
 
@@ -84,7 +90,6 @@ func (v *visArr) set(ctx context.Context, ind, val int) {
 	defer v.mu.Unlock()
 
 	v.arr[ind] = val
-	v.colors = make([]string, len(v.arr))
 	v.colors[ind] = writeClr
 
 	playBeepArr(v.arr[ind], v.volume)
@@ -96,7 +101,6 @@ func (v *visArr) swap(ctx context.Context, i, j int) {
 	defer v.mu.Unlock()
 
 	v.arr[i], v.arr[j] = v.arr[j], v.arr[i]
-	v.colors = make([]string, len(v.arr))
 	v.colors[i] = writeClr
 	v.colors[j] = writeClr
 
