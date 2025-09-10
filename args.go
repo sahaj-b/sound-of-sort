@@ -13,6 +13,7 @@ var (
 	initialSort   = flag.String("sort", "quick", "Initial sorting algorithm")
 	fpsFlag       = flag.Int("fps", 60, "Frames per second for rendering")
 	listFlag      = flag.Bool("list", false, "List available sorting algorithms")
+	imgFlag       = flag.Bool("img", false, "Enable image mode (Get ascii image from stdin)")
 	helpFlag      = flag.Bool("help", false, "Show help message")
 )
 

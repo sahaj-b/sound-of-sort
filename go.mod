@@ -3,6 +3,7 @@ module github.com/sahaj-b/sound-of-sort
 go 1.24.3
 
 require (
+	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/gopxl/beep v1.4.1
 	golang.org/x/term v0.17.0
 )

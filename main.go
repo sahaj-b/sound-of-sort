@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"math"
 	"os"
 	"sync"
@@ -31,8 +32,10 @@ type App struct {
 	delay            atomic.Int64
 	volume           atomic.Uint64
 
-	fps         int
-	originalArr []int
+	fps     int
+	imgMode bool
+	intArr  []int
+	imgArr  []string
 }
 
 func NewApp() *App {
@@ -46,6 +49,7 @@ func NewApp() *App {
 	app.stateChan = make(chan VisState, 1)
 	app.inputChan = make(chan string, 1)
 	app.fps = *fpsFlag
+	app.imgMode = *imgFlag
 
 	app.delay.Store(int64(time.Duration(*initialDelay) * time.Millisecond))
 	app.volume.Store(math.Float64bits(*initialVolume))
@@ -57,9 +61,26 @@ func NewApp() *App {
 	}
 	app.currentSize.Store(int32(*initialSize))
 
-	app.originalArr = getSequenceArr(1, *initialSize)
-	setArrBounds(1, *initialSize)
-	shuffleArr(app.originalArr)
+	size := *initialSize
+	if app.imgMode {
+		img, err := readImageFromStdin()
+		makeRectangular(img)
+		if err != nil {
+			log.Fatal("Error reading image from stdin:", err)
+		}
+		if len(img) == 0 {
+			log.Fatal("No image data provided in stdin")
+		}
+		transposed, err := transpose(img)
+		if err != nil {
+			log.Fatal("Error processing image:", err)
+		}
+		size = getLineWidth(img[0])
+		app.imgArr = transposed
+	}
+	app.intArr = getSequenceArr(0, size)
+	setArrBounds(0, size-1)
+	shuffleArr(app.intArr)
 
 	return app
 }
@@ -83,9 +104,14 @@ func (app *App) Run() {
 
 		currentSizeVal := app.currentSize.Load()
 		if currentSizeVal != previousSize || app.shuffleRequested.Load() {
-			app.originalArr = getSequenceArr(1, int(currentSizeVal))
-			setArrBounds(1, int(currentSizeVal))
-			shuffleArr(app.originalArr)
+			if app.imgMode {
+				app.intArr = getSequenceArr(0, int(currentSizeVal))
+				setArrBounds(0, int(currentSizeVal)-1)
+			} else {
+				app.intArr = getSequenceArr(1, int(currentSizeVal))
+				setArrBounds(1, int(currentSizeVal))
+			}
+			shuffleArr(app.intArr)
 			previousSize = currentSizeVal
 			app.shuffleRequested.Store(false)
 		}
@@ -98,8 +124,14 @@ func (app *App) Run() {
 
 func (app *App) renderLoop() {
 	for state := range app.stateChan {
+		var graph []string
+		if app.imgMode {
+			graph = imgGraph(state.Arr, app.imgArr, state.Colors)
+		} else {
+			graph = arrGraph(state.Arr, state.Colors)
+		}
 		render(
-			arrGraph(state.Arr, state.Colors),
+			graph,
 			state.SortName,
 			time.Duration(app.delay.Load()),
 			math.Float64frombits(app.volume.Load()),
@@ -111,8 +143,8 @@ func (app *App) renderLoop() {
 func (app *App) runSortCycle() bool {
 	fmt.Print(clear)
 
-	arrToSort := make([]int, len(app.originalArr))
-	copy(arrToSort, app.originalArr)
+	arrToSort := make([]int, len(app.intArr))
+	copy(arrToSort, app.intArr)
 
 	currentIndex := app.currentSortIndex.Load()
 	currentSortName := algos.Sorts[currentIndex].Name
@@ -183,6 +215,7 @@ inputLoop:
 }
 
 func main() {
+	log.SetFlags(0)
 	app := NewApp()
 	app.Run()
 }

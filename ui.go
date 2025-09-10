@@ -34,12 +34,18 @@ var (
 )
 
 func initUI() (restore func()) {
-	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
+	if err != nil {
+		// No TTY available, run in non-interactive mode
+		return func() {}
+	}
+
+	oldState, err := term.MakeRaw(int(tty.Fd()))
 	if err != nil {
 		log.Fatal("Error setting terminal to raw mode:", err)
 	}
 
-	width, height, err := term.GetSize(int(os.Stdout.Fd()))
+	width, height, err := term.GetSize(int(tty.Fd()))
 	if err != nil {
 		fmt.Println("Error getting terminal size:", err)
 	}
@@ -48,18 +54,25 @@ func initUI() (restore func()) {
 	fmt.Print(hideCursor)
 	fmt.Print(clear)
 	return func() {
-		term.Restore(int(os.Stdin.Fd()), oldState)
+		term.Restore(int(tty.Fd()), oldState)
 		fmt.Print(showCursor)
+		tty.Close()
 	}
 }
 
 func inputReader(ch chan string) {
+	tty, err := os.OpenFile("/dev/tty", os.O_RDONLY, 0)
+	if err != nil {
+		// if no tty is available
+		close(ch)
+		return
+	}
+	defer tty.Close()
 	defer close(ch)
 	buf := make([]byte, 3)
 	for {
-		n, err := os.Stdin.Read(buf)
+		n, err := tty.Read(buf)
 		if err != nil || n == 0 {
-			close(ch)
 			return
 		}
 		ch <- string(buf[:n])
@@ -154,14 +167,26 @@ func arrGraph(arr []int, colors []string) []string {
 	return output
 }
 
+func imgGraph(arr []int, img []string, colors []string) []string {
+	// assumes len(arr) == len(img[0])
+	if len(img) == 0 {
+		return img
+	}
+	output := make([]string, len(img[0]))
+	for i, val := range arr {
+		for j, char := range img[val] {
+			if j < len(output) {
+				output[j] += colors[i] + string(char) + reset
+			} else {
+				output[j] += " "
+			}
+		}
+	}
+	return output
+}
+
 func render(graph []string, sortName string, currentDelay time.Duration, currentVol float64, currentSize int) {
 	fmt.Print(moveToTop)
-	// sortStr := "←/→: " + sortName
-	// volumeStr := "↑/↓ Volume: " + fmt.Sprintf("%.1f", currentVol*100)
-	// delayStr := "w/s Delay: " + currentDelay.String()
-	// sizeStr := fmt.Sprintf("a/d Arr Size: %d", currentSize)
-	// reshuffleStr := "r to reshuffle"
-	// quitStr := "q to quit"
 	statusStrs := []string{
 		"←/→: " + sortName,
 		"↑/↓ Volume: " + fmt.Sprintf("%.1f", currentVol*100),
