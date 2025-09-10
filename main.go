@@ -75,7 +75,7 @@ func NewApp() *App {
 		if err != nil {
 			log.Fatal("Error processing image:", err)
 		}
-		size = getLineWidth(img[0])
+		size = len(transposed) // Use transposed height (original width)
 		app.imgArr = transposed
 	}
 	app.intArr = getSequenceArr(0, size)

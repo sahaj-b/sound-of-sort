@@ -168,17 +168,60 @@ func arrGraph(arr []int, colors []string) []string {
 }
 
 func imgGraph(arr []int, img []string, colors []string) []string {
-	// assumes len(arr) == len(img[0])
 	if len(img) == 0 {
 		return img
 	}
-	output := make([]string, len(img[0]))
+
+	parseUnits := func(s string) []string {
+		units := []string{}
+		i := 0
+		for i < len(s) {
+			if s[i] == '\x1b' { // ANSI seq
+				j := i
+				for j < len(s) && s[j] != 'm' {
+					j++
+				}
+				if j < len(s) {
+					j++ // include 'm'
+				}
+				if j < len(s) { // append sequence + following char (visual cell)
+					_, sz := utf8.DecodeRuneInString(s[j:])
+					units = append(units, s[i:j+sz])
+					i = j + sz
+				} else { // dangling sequence
+					units = append(units, s[i:j])
+					i = j
+				}
+			} else { // plain char
+				_, sz := utf8.DecodeRuneInString(s[i:])
+				units = append(units, s[i:i+sz])
+				i += sz
+			}
+		}
+		return units
+	}
+
+	heightUnits := parseUnits(img[0])
+	height := len(heightUnits)
+	output := make([]string, height)
+
 	for i, val := range arr {
-		for j, char := range img[val] {
-			if j < len(output) {
-				output[j] += colors[i] + string(char) + reset
+		if val < 0 || val >= len(img) {
+			for row := range height {
+				output[row] += " "
+			}
+			continue
+		}
+		colUnits := parseUnits(img[val])
+		for row := range height {
+			unit := " "
+			if row < len(colUnits) {
+				unit = colUnits[row]
+			}
+			if colors[i] != "" { // highlight access without nuking existing color if none
+				output[row] += colors[i] + unit + reset
 			} else {
-				output[j] += " "
+				output[row] += unit
 			}
 		}
 	}
@@ -205,8 +248,9 @@ func render(graph []string, sortName string, currentDelay time.Duration, current
 	statusLen += 3 * (len(statusStrs) - 1)
 	statusPadding := max(0, (termWidth-statusLen)/2)
 	fmt.Println(strings.Repeat(" ", statusPadding) + statusStr + "\r\n\r")
-	graphWidth := utf8.RuneCountInString(graphChar) * currentSize
-	graphPadding := max(0, (termWidth-graphWidth)/2)
+
+	w := getLineWidth(graph[0])
+	graphPadding := max(0, (termWidth-w)/2)
 	for _, line := range graph {
 		fmt.Println(strings.Repeat(" ", graphPadding) + line + clearLine + "\r")
 	}

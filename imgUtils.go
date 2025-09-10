@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"os"
-	"unicode/utf8"
 
 	"github.com/acarl005/stripansi"
 )
@@ -13,25 +12,33 @@ func transpose(img []string) ([]string, error) {
 		return nil, nil
 	}
 
-	// Strip ANSI codes to get the actual character positions
+	// Strip ANSI codes to get visual dimensions
 	stripped := make([]string, len(img))
 	for i, line := range img {
 		stripped[i] = stripansi.Strip(line)
 	}
 
-	if len(stripped[0]) == 0 {
+	if len(stripped) == 0 || len(stripped[0]) == 0 {
 		return nil, nil
 	}
 
-	// Create transposed output based on stripped character positions
-	transposed := make([]string, len(stripped[0]))
+	// Find max width
+	maxWidth := 0
+	for _, line := range stripped {
+		if len(line) > maxWidth {
+			maxWidth = len(line)
+		}
+	}
 
-	for col := 0; col < len(stripped[0]); col++ {
+	// Create transposed output - each column becomes a row
+	transposed := make([]string, maxWidth)
+
+	for col := 0; col < maxWidth; col++ {
 		var newRow string
 		for row := 0; row < len(stripped); row++ {
 			if col < len(stripped[row]) {
-				// Extract the character at this position from the original (with ANSI codes)
-				char := getCharAtPosition(img[row], col)
+				// Get the character at this visual position from original line with colors
+				char := getCharWithColorAtPosition(img[row], col)
 				newRow += char
 			} else {
 				newRow += " "
@@ -43,43 +50,41 @@ func transpose(img []string) ([]string, error) {
 	return transposed, nil
 }
 
-// Extract character at visual position, preserving ANSI codes
-func getCharAtPosition(line string, pos int) string {
-	if pos < 0 {
+// Extract character with ANSI colors at visual position
+func getCharWithColorAtPosition(line string, visualPos int) string {
+	if visualPos < 0 {
 		return " "
 	}
 
-	visualPos := 0
+	currentVisualPos := 0
 	i := 0
 
 	for i < len(line) {
 		if line[i] == '\x1b' {
-			// Find the end of the ANSI sequence
+			// Find end of ANSI sequence
 			j := i
 			for j < len(line) && line[j] != 'm' {
 				j++
 			}
 			if j < len(line) {
-				j++ // include the 'm'
+				j++ // include 'm'
 			}
-			if visualPos == pos {
-				// Return the ANSI sequence + the character that follows
+
+			if currentVisualPos == visualPos {
+				// Return ANSI sequence + following character
 				ansiCode := line[i:j]
 				if j < len(line) {
-					r, _ := utf8.DecodeRuneInString(line[j:])
-					return ansiCode + string(r)
+					return ansiCode + string(line[j])
 				}
 				return ansiCode + " "
 			}
 			i = j
 		} else {
-			if visualPos == pos {
-				r, _ := utf8.DecodeRuneInString(line[i:])
-				return string(r)
+			if currentVisualPos == visualPos {
+				return string(line[i])
 			}
-			_, size := utf8.DecodeRuneInString(line[i:])
-			i += size
-			visualPos++
+			i++
+			currentVisualPos++
 		}
 	}
 
