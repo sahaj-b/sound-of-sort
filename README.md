@@ -10,6 +10,7 @@ This is a Go-based terminal application that visualizes and sonifies a whole bun
 - **Real-time Visualization:** Renders sorting algorithms as a bar graph directly in your terminal.
 - **Sonification:** Every time an array element is accessed or modified, it plays a tone (pitch corresponds to the element's value)
 - **Interactive:** Change algorithms, speed, volume, array size and reshuffle on the fly.
+- **Image Mode:** Pipe ASCII/ANSI art via stdin with `-img`
 - **Algorithms:** Includes a loads of classic (and not-so-classic) sorting algorithms (you can add your own too)
 
 ---
@@ -65,21 +66,46 @@ go build
 
 You can customize the startup state. If you don't, it uses sane defaults.
 
-| Flag      | Description                                    | Default   |
-| :-------- | :----------------------------------------      | :-------- |
-| `-sort`   | Initial sorting algorithm to use               | `quick`   |
-| `-size`   | Initial array size                             | `100`     |
-| `-delay`  | Initial delay between operations (ms)          | `5`       |
-| `-volume` | Initial volume (0.0 to 1.0)                    | `0.1`     |
-| `-fps`    | Rendering frames per second                    | `60`      |
-| `-list`   | List all available sorting algorithms and exit | `false`   |
-| `-help`   | Show this help message and exit                | `false`   |
+| Flag      | Description                                         | Default   |
+| :-------- | :-------------------------------------------------- | :-------- |
+| `-sort`   | Initial sorting algorithm to use                    | `quick`   |
+| `-size`   | Initial array size (ignored in image mode)          | `100`     |
+| `-delay`  | Initial delay between operations (ms)               | `5`       |
+| `-volume` | Initial volume (0.0 to 1.0)                         | `0.1`     |
+| `-fps`    | Rendering frames per second                         | `60`      |
+| `-list`   | List all available sorting algorithms and exit      | `false`   |
+| `-img`    | Enable image mode (pipe ASCII art via stdin)        | `false`   |
+| `-help`   | Show this help message and exit                     | `false`   |
+
+Image mode: when `-img` is set the program reads an ANSI/ASCII image from stdin, and uses its width as the array length. The `-size` flag is ignored in this mode.
 
 **Example:** Start with the Bogo Sort on a tiny array
 
 ```bash
 ./sound-of-sort -sort bogo -size 8
 ```
+
+-----
+
+## Image Mode (ASCII / ANSI Art Sorting)
+
+Pipe any ASCII/ANSI colored art into this beast with `-img`.  
+Each individual columns of image are shuffled and sorted (the image visually reassembles.)  
+
+Basic usage:
+
+```bash
+pixcii -i path/to/image.jpg -c | sound-of-sort -img
+# or
+chafa -f symbols path/to/img.jpg -s 50x50 | sound-of-sort -img
+# or
+ascii-image-converter path/to/image.jpg | sound-of-sort -img
+# or any other ASCII art generator
+```
+
+Notes:
+- `-size` is ignored (array length = original image width).
+- Wide glyphs or full‑width Unicode and braille might mess up the rendering (for now)
 
 -----
 
