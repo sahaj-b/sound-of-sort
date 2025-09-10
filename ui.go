@@ -6,7 +6,6 @@ import (
 	"math"
 	"os"
 	"strings"
-	"sync/atomic"
 	"time"
 	"unicode/utf8"
 
@@ -79,62 +78,68 @@ func inputReader(ch chan string) {
 	}
 }
 
-func handleInput(input string, currentSortIndex *atomic.Int32, currentSize *atomic.Int32, shuffleRequested *atomic.Bool, delay *atomic.Int64, volume *atomic.Uint64) bool {
+func (app *App) handleInput(input string) bool {
 	switch input {
 	case "q", "\x03": // Ctrl+C
 		return true
 
 	case "w": // increase delay
-		delay.Add(100 * int64(time.Microsecond))
+		app.delay.Add(100 * int64(time.Microsecond))
 
 	case "s": // decrease delay
 		// use a CAS loop
 		for {
-			currentDelay := delay.Load()
+			currentDelay := app.delay.Load()
 
 			newDelay := max(50*int64(time.Microsecond), currentDelay-(100*int64(time.Microsecond)))
 
 			// this returns false if the currentDelay got changed since we loaded it
-			if delay.CompareAndSwap(currentDelay, newDelay) {
+			if app.delay.CompareAndSwap(currentDelay, newDelay) {
 				break
 			}
 		}
 
-	case "A", "\x1b[A": // Up arrow
-		oldBits := volume.Load()
+	case "\x1b[A": // Up arrow
+		oldBits := app.volume.Load()
 		oldFloat := math.Float64frombits(oldBits)
 
 		newFloat := min(oldFloat+0.005, 1.0)
 
 		newBits := math.Float64bits(newFloat)
-		volume.Store(newBits)
+		app.volume.Store(newBits)
 
-	case "B", "\x1b[B": // Down arrow
-		oldFloat := math.Float64frombits(volume.Load())
+	case "\x1b[B": // Down arrow
+		oldFloat := math.Float64frombits(app.volume.Load())
 		newFloat := max(0.0, oldFloat-0.01)
 		newBits := math.Float64bits(newFloat)
-		volume.Store(newBits)
+		app.volume.Store(newBits)
 
 	case "p", "\x1b[D": // Left arrow
-		newIndex := currentSortIndex.Add(1)
-		currentSortIndex.Store(newIndex % int32(len(algos.Sorts)))
+		newIndex := app.currentSortIndex.Add(1)
+		app.currentSortIndex.Store(newIndex % int32(len(algos.Sorts)))
 	case "n", "\x1b[C": // Right arrow
-		newIndex := currentSortIndex.Add(-1)
+		newIndex := app.currentSortIndex.Add(-1)
 		if newIndex < 0 {
 			newIndex = int32(len(algos.Sorts) - 1)
 		}
-		currentSortIndex.Store(newIndex)
+		app.currentSortIndex.Store(newIndex)
 
 	case "a": // decrease array size
-		newSize := max(0, currentSize.Add(-10))
-		currentSize.Store(newSize)
+		if app.imgMode {
+			return false
+		}
+		newSize := max(0, app.currentSize.Add(-10))
+		app.currentSize.Store(newSize)
 
 	case "d": // increase array size
-		newSize := currentSize.Add(10)
-		currentSize.Store(newSize)
+		if app.imgMode {
+			return false
+		}
+		newSize := app.currentSize.Add(10)
+		app.currentSize.Store(newSize)
 
 	case "r": // shuffle array
-		shuffleRequested.Store(true)
+		app.shuffleRequested.Store(true)
 	}
 	return false
 }
@@ -228,13 +233,17 @@ func imgGraph(arr []int, img []string, colors []string) []string {
 	return output
 }
 
-func render(graph []string, sortName string, currentDelay time.Duration, currentVol float64, currentSize int) {
+func (app *App) render(graph []string, sortName string) {
 	fmt.Print(moveToTop)
+	arrSizeStr := fmt.Sprintf("a/d Arr Size: %d", app.currentSize.Load())
+	if app.imgMode {
+		arrSizeStr = fmt.Sprintf("Image Size: %d", app.currentSize.Load())
+	}
 	statusStrs := []string{
 		"←/→: " + sortName,
-		"↑/↓ Volume: " + fmt.Sprintf("%.1f", currentVol*100),
-		"w/s Delay: " + currentDelay.String(),
-		fmt.Sprintf("a/d Arr Size: %d", currentSize),
+		"↑/↓ Volume: " + fmt.Sprintf("%.1f", math.Float64frombits(app.volume.Load())*100),
+		"w/s Delay: " + time.Duration(app.delay.Load()).String(),
+		arrSizeStr,
 		"r to reshuffle",
 		"q to quit",
 	}

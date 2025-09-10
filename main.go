@@ -130,12 +130,9 @@ func (app *App) renderLoop() {
 		} else {
 			graph = arrGraph(state.Arr, state.Colors)
 		}
-		render(
+		app.render(
 			graph,
 			state.SortName,
-			time.Duration(app.delay.Load()),
-			math.Float64frombits(app.volume.Load()),
-			int(app.currentSize.Load()),
 		)
 	}
 }
@@ -191,7 +188,7 @@ inputLoop:
 	for {
 		select {
 		case input := <-app.inputChan:
-			if handleInput(input, &app.currentSortIndex, &app.currentSize, &app.shuffleRequested, &app.delay, &app.volume) {
+			if app.handleInput(input) {
 				app.cancel()
 				return false
 			}
