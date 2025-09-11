@@ -67,13 +67,13 @@ func (v *visArr) GetState() ([]int, []string) {
 
 func (v *visArr) Get(ctx context.Context, ind int) int {
 	v.Check(ctx)
-	v.mu.RLock()
-	defer v.mu.RUnlock()
+	v.mu.Lock()
+	defer v.mu.Unlock()
 
+	val := v.arr[ind]
 	v.colors[ind] = readClr
-	playBeepArr(v.arr[ind], v.volume)
-
-	return v.arr[ind]
+	playBeepArr(val, v.volume)
+	return val
 }
 
 func (v *visArr) Set(ctx context.Context, ind, val int) {

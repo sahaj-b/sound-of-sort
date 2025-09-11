@@ -53,7 +53,7 @@ func NewApp() *App {
 	app.imgMode = *imgFlag
 	app.horizontal = *horizontalFlag
 
-	app.delay.Store(int64(time.Duration(*initialDelay) * time.Millisecond))
+	app.delay.Store(int64(*initialDelay * float64(time.Millisecond)))
 	app.volume.Store(math.Float64bits(*initialVolume))
 	for i, s := range algos.Sorts {
 		if s.Arg == *initialSort {
@@ -133,6 +133,11 @@ func (app *App) Run() {
 func (app *App) renderLoop() {
 	for state := range app.stateChan {
 		var graph []string
+		defer func() {
+			if r := recover(); r != nil {
+				// just skip this frame; likely transient length mismatch
+			}
+		}()
 		if app.imgMode {
 			if app.horizontal {
 				graph = imgGraphHorizontal(state.Arr, app.imgArr, state.Colors)
@@ -141,6 +146,9 @@ func (app *App) renderLoop() {
 			}
 		} else {
 			graph = arrGraph(state.Arr, state.Colors)
+		}
+		if len(graph) == 0 {
+			continue
 		}
 		app.render(
 			graph,

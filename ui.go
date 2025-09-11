@@ -207,6 +207,12 @@ func imgGraphHorizontal(arr []int, img []string, colors []string) []string {
 	if len(img) == 0 {
 		return img
 	}
+	// guard: sometimes a race elsewhere could hand us fewer colors; pad so we don't blow up
+	if len(colors) < len(arr) {
+		tmp := make([]string, len(arr))
+		copy(tmp, colors)
+		colors = tmp
+	}
 	output := make([]string, len(arr))
 	for i, val := range arr {
 		if val < 0 || val >= len(img) {
@@ -214,8 +220,12 @@ func imgGraphHorizontal(arr []int, img []string, colors []string) []string {
 			continue
 		}
 		line := img[val]
-		if colors[i] != "" {
-			output[i] = colors[i] + line + reset
+		c := ""
+		if i < len(colors) {
+			c = colors[i]
+		}
+		if c != "" {
+			output[i] = c + line + reset
 		} else {
 			output[i] = line
 		}
