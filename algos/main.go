@@ -19,18 +19,18 @@ var Sorts = []struct {
 	Arg  string
 	Fun  sortFunc
 }{
-	{"Quick Sort", "quick", quickSort},
 	{"Bubble Sort", "bubble", bubbleSort},
 	{"Selection Sort", "selection", selectionSort},
 	{"Insertion Sort", "insertion", insertionSort},
-	{"Merge Sort", "merge", mergeSort},
-	{"Heap Sort", "heap", heapSort},
-	{"Shell Sort", "shell", shellSort},
-	{"Cocktail Shaker Sort", "cocktail", cocktailShakerSort},
 	{"Gnome Sort", "gnome", gnomeSort},
+	{"Cocktail Shaker Sort", "cocktail", cocktailShakerSort},
 	{"Pancake Sort", "pancake", pancakeSort},
-	{"Radix Sort (LSD)", "radix", radixSortLSD},
-	{"Timsort", "timsort", timsort},
+	{"Shell Sort", "shell", shellSort},
+	{"Merge Sort", "merge", mergeSort},
+	{"Quick Sort", "quick", quickSort},
+	{"Heap Sort", "heap", heapSort},
 	{"Bitonic Sort", "bitonic", bitonicSort},
+	{"Timsort", "timsort", timsort},
+	{"Radix Sort (LSD)", "radix", radixSortLSD},
 	{"Bogo Sort", "bogo", bogoSort},
 }
