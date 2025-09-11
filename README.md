@@ -75,6 +75,7 @@ You can customize the startup state. If you don't, it uses sane defaults.
 | `-fps`    | Rendering frames per second                         | `60`      |
 | `-list`   | List all available sorting algorithms and exit      | `false`   |
 | `-img`    | Enable image mode (pipe ASCII art via stdin)        | `false`   |
+| `-horiz`  | Horizontal image mode (sort rows instead of columns) | `false`   |
 | `-help`   | Show this help message and exit                     | `false`   |
 
 Image mode: when `-img` is set the program reads an ANSI/ASCII image from stdin, and uses its width as the array length. The `-size` flag is ignored in this mode.
@@ -90,22 +91,31 @@ Image mode: when `-img` is set the program reads an ANSI/ASCII image from stdin,
 ## Image Mode (ASCII / ANSI Art Sorting)
 
 Pipe any ASCII/ANSI colored art into this beast with `-img`.  
-Each individual columns of image are shuffled and sorted (the image visually reassembles.)  
+By default, individual columns of the image are shuffled and sorted (the image visually reassembles).  
 
 Basic usage:
 
 ```bash
 pixcii -i path/to/image.jpg -c | sound-of-sort -img
 # or
-chafa -f symbols path/to/img.jpg -s 50x50 | sound-of-sort -img
+chafa -f symbols path/to/img.jpg -s 50x50 | sound-of-sort -img -horiz
 # or
 ascii-image-converter path/to/image.jpg | sound-of-sort -img
 # or any other ASCII art generator
 ```
 
-Notes:
-- `-size` is ignored (array length = original image width).
-- Wide glyphs or full‑width Unicode and braille might mess up the rendering (for now)
+### Horizontal Mode
+
+Use `-horiz` to sort rows instead of columns. This is better for images with wide glyphs, full-width Unicode, or complex braille patterns:
+
+```bash
+chafa -f symbols path/to/img.jpg -s 80x30 | sound-of-sort -img -horiz
+```
+
+> [!Note]
+> - `-size` is ignored in image mode (array length = image width/height)
+> - Horizontal mode (`-horiz`) almost always works even with complex art with unicode characters
+> - Normal(vertical) mode works best with simple ASCII art with single-width characters
 
 -----
 
