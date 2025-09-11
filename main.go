@@ -32,10 +32,11 @@ type App struct {
 	delay            atomic.Int64
 	volume           atomic.Uint64
 
-	fps     int
-	imgMode bool
-	intArr  []int
-	imgArr  []string
+	fps        int
+	imgMode    bool
+	horizontal bool
+	intArr     []int
+	imgArr     []string
 }
 
 func NewApp() *App {
@@ -50,6 +51,7 @@ func NewApp() *App {
 	app.inputChan = make(chan string, 1)
 	app.fps = *fpsFlag
 	app.imgMode = *imgFlag
+	app.horizontal = *horizontalFlag
 
 	app.delay.Store(int64(time.Duration(*initialDelay) * time.Millisecond))
 	app.volume.Store(math.Float64bits(*initialVolume))
@@ -71,12 +73,18 @@ func NewApp() *App {
 		if len(img) == 0 {
 			log.Fatal("No image data provided in stdin")
 		}
-		transposed, err := transpose(img)
-		if err != nil {
-			log.Fatal("Error processing image:", err)
+		if app.horizontal {
+			// horizontal: rows are the elements
+			size = len(img)
+			app.imgArr = img
+		} else {
+			transposed, err := transpose(img)
+			if err != nil {
+				log.Fatal("Error processing image:", err)
+			}
+			size = len(transposed)
+			app.imgArr = transposed
 		}
-		size = len(transposed) // Use transposed height (original width)
-		app.imgArr = transposed
 	}
 	app.intArr = getSequenceArr(0, size)
 	setArrBounds(0, size-1)
@@ -126,7 +134,11 @@ func (app *App) renderLoop() {
 	for state := range app.stateChan {
 		var graph []string
 		if app.imgMode {
-			graph = imgGraph(state.Arr, app.imgArr, state.Colors)
+			if app.horizontal {
+				graph = imgGraphHorizontal(state.Arr, app.imgArr, state.Colors)
+			} else {
+				graph = imgGraph(state.Arr, app.imgArr, state.Colors)
+			}
 		} else {
 			graph = arrGraph(state.Arr, state.Colors)
 		}

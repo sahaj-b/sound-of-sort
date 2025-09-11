@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"os"
+	"unicode/utf8"
 
 	"github.com/acarl005/stripansi"
 )
@@ -121,5 +122,5 @@ func readImageFromStdin() ([]string, error) {
 }
 
 func getLineWidth(str string) int {
-	return len(stripansi.Strip(str))
+	return utf8.RuneCountInString(stripansi.Strip(str))
 }

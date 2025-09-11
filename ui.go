@@ -233,6 +233,26 @@ func imgGraph(arr []int, img []string, colors []string) []string {
 	return output
 }
 
+func imgGraphHorizontal(arr []int, img []string, colors []string) []string {
+	if len(img) == 0 {
+		return img
+	}
+	output := make([]string, len(arr))
+	for i, val := range arr {
+		if val < 0 || val >= len(img) {
+			output[i] = ""
+			continue
+		}
+		line := img[val]
+		if colors[i] != "" {
+			output[i] = colors[i] + line + reset
+		} else {
+			output[i] = line
+		}
+	}
+	return output
+}
+
 func (app *App) render(graph []string, sortName string) {
 	fmt.Print(moveToTop)
 	arrSizeStr := fmt.Sprintf("a/d Arr Size: %d", app.currentSize.Load())
