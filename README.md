@@ -104,19 +104,6 @@ ascii-image-converter path/to/image.jpg | sound-of-sort -img
 # or any other ASCII art generator
 ```
 
-### Horizontal Mode
-
-Use `-horiz` to sort rows instead of columns. This is better for images with wide glyphs, full-width Unicode, or complex braille patterns:
-
-```bash
-chafa -f symbols path/to/img.jpg -s 80x30 | sound-of-sort -img -horiz
-```
-
-> [!Note]
-> - `-size` is ignored in image mode (array length = image width/height)
-> - Horizontal mode (`-horiz`) almost always works even with complex art with unicode characters
-> - Normal(vertical) mode works best with simple ASCII art with single-width characters
-
 -----
 
 ## Controls
