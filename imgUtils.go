@@ -3,108 +3,99 @@ package main
 import (
 	"bufio"
 	"os"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/acarl005/stripansi"
 )
+
+// parseCells groups any contiguous SGR (ANSI) sequences with the following rune as one visual cell.
+// Trailing SGR sequences (like a final reset) get merged into the last cell so colors don't leak.
+func parseCells(s string) []string {
+	if s == "" {
+		return nil
+	}
+	cells := []string{}
+	pending := ""
+	for i := 0; i < len(s); {
+		if s[i] == '\x1b' { // start of ANSI
+			j := i + 1
+			for j < len(s) && s[j] != 'm' { // scan until 'm'
+				j++
+			}
+			if j < len(s) { // include 'm'
+				j++
+				pending += s[i:j]
+				i = j
+				continue
+			}
+			// truncated sequence: stop
+			break
+		}
+		r, sz := utf8.DecodeRuneInString(s[i:])
+		if r == utf8.RuneError && sz == 1 { // invalid byte, treat as raw
+			cells = append(cells, pending+string(s[i]))
+			pending = ""
+			i++
+			continue
+		}
+		cells = append(cells, pending+string(r))
+		pending = ""
+		i += sz
+	}
+	if pending != "" && len(cells) > 0 { // attach any trailing SGR (usually reset)
+		cells[len(cells)-1] += pending
+	}
+	return cells
+}
 
 func transpose(img []string) ([]string, error) {
 	if len(img) == 0 {
 		return nil, nil
 	}
 
-	// Strip ANSI codes to get visual dimensions
-	stripped := make([]string, len(img))
+	cellsPerLine := make([][]string, len(img))
+	maxWidth := 0
 	for i, line := range img {
-		stripped[i] = stripansi.Strip(line)
+		cells := parseCells(line)
+		cellsPerLine[i] = cells
+		if len(cells) > maxWidth {
+			maxWidth = len(cells)
+		}
 	}
-
-	if len(stripped) == 0 || len(stripped[0]) == 0 {
+	if maxWidth == 0 {
 		return nil, nil
 	}
 
-	// Find max width
-	maxWidth := 0
-	for _, line := range stripped {
-		if len(line) > maxWidth {
-			maxWidth = len(line)
-		}
-	}
-
-	// Create transposed output - each column becomes a row
 	transposed := make([]string, maxWidth)
-
 	for col := 0; col < maxWidth; col++ {
-		var newRow string
-		for row := 0; row < len(stripped); row++ {
-			if col < len(stripped[row]) {
-				// Get the character at this visual position from original line with colors
-				char := getCharWithColorAtPosition(img[row], col)
-				newRow += char
+		var b strings.Builder
+		for row := 0; row < len(cellsPerLine); row++ {
+			if col < len(cellsPerLine[row]) {
+				b.WriteString(cellsPerLine[row][col])
 			} else {
-				newRow += " "
+				b.WriteByte(' ')
 			}
 		}
-		transposed[col] = newRow
+		transposed[col] = b.String()
 	}
-
 	return transposed, nil
 }
 
-// Extract character with ANSI colors at visual position
-func getCharWithColorAtPosition(line string, visualPos int) string {
-	if visualPos < 0 {
-		return " "
-	}
-
-	currentVisualPos := 0
-	i := 0
-
-	for i < len(line) {
-		if line[i] == '\x1b' {
-			// Find end of ANSI sequence
-			j := i
-			for j < len(line) && line[j] != 'm' {
-				j++
-			}
-			if j < len(line) {
-				j++ // include 'm'
-			}
-
-			if currentVisualPos == visualPos {
-				// Return ANSI sequence + following character
-				ansiCode := line[i:j]
-				if j < len(line) {
-					return ansiCode + string(line[j])
-				}
-				return ansiCode + " "
-			}
-			i = j
-		} else {
-			if currentVisualPos == visualPos {
-				return string(line[i])
-			}
-			i++
-			currentVisualPos++
-		}
-	}
-
-	return " "
-}
-
 func makeRectangular(img []string) {
+	if len(img) == 0 {
+		return
+	}
 	maxWidth := getLineWidth(img[0])
 	for _, line := range img {
-		maxWidth = max(maxWidth, len(stripansi.Strip(line)))
+		if w := getLineWidth(line); w > maxWidth {
+			maxWidth = w
+		}
 	}
 	for i, line := range img {
-		lineWidth := len(stripansi.Strip(line))
-		if lineWidth < maxWidth {
-			padding := make([]byte, maxWidth-lineWidth)
-			for j := range padding {
-				padding[j] = ' '
-			}
-			img[i] = line + string(padding)
+		w := getLineWidth(line)
+		if w < maxWidth {
+			img[i] = line + strings.Repeat(" ", maxWidth-w)
 		}
 	}
 }

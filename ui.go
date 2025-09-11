@@ -177,56 +177,26 @@ func imgGraph(arr []int, img []string, colors []string) []string {
 		return img
 	}
 
-	parseUnits := func(s string) []string {
-		units := []string{}
-		i := 0
-		for i < len(s) {
-			if s[i] == '\x1b' { // ANSI seq
-				j := i
-				for j < len(s) && s[j] != 'm' {
-					j++
-				}
-				if j < len(s) {
-					j++ // include 'm'
-				}
-				if j < len(s) { // append sequence + following char (visual cell)
-					_, sz := utf8.DecodeRuneInString(s[j:])
-					units = append(units, s[i:j+sz])
-					i = j + sz
-				} else { // dangling sequence
-					units = append(units, s[i:j])
-					i = j
-				}
-			} else { // plain char
-				_, sz := utf8.DecodeRuneInString(s[i:])
-				units = append(units, s[i:i+sz])
-				i += sz
-			}
-		}
-		return units
-	}
-
-	heightUnits := parseUnits(img[0])
-	height := len(heightUnits)
+	firstCol := parseCells(img[0])
+	height := len(firstCol)
 	output := make([]string, height)
-
 	for i, val := range arr {
 		if val < 0 || val >= len(img) {
-			for row := range height {
-				output[row] += " "
+			for r := 0; r < height; r++ {
+				output[r] += " "
 			}
 			continue
 		}
-		colUnits := parseUnits(img[val])
-		for row := range height {
-			unit := " "
-			if row < len(colUnits) {
-				unit = colUnits[row]
+		col := parseCells(img[val])
+		for r := 0; r < height; r++ {
+			cell := " "
+			if r < len(col) {
+				cell = col[r]
 			}
-			if colors[i] != "" { // highlight access without nuking existing color if none
-				output[row] += colors[i] + unit + reset
+			if colors[i] != "" {
+				output[r] += colors[i] + cell + reset
 			} else {
-				output[row] += unit
+				output[r] += cell
 			}
 		}
 	}
@@ -281,6 +251,6 @@ func (app *App) render(graph []string, sortName string) {
 	w := getLineWidth(graph[0])
 	graphPadding := max(0, (termWidth-w)/2)
 	for _, line := range graph {
-		fmt.Println(strings.Repeat(" ", graphPadding) + line + clearLine + "\r")
+		fmt.Println(reset + strings.Repeat(" ", graphPadding) + line + reset + clearLine + "\r")
 	}
 }
