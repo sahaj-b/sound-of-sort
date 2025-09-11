@@ -61,7 +61,6 @@ func NewApp() *App {
 			break
 		}
 	}
-	app.currentSize.Store(int32(*initialSize))
 
 	size := *initialSize
 	if app.imgMode {
@@ -86,6 +85,7 @@ func NewApp() *App {
 			app.imgArr = transposed
 		}
 	}
+	app.currentSize.Store(int32(size))
 	app.intArr = getSequenceArr(0, size)
 	setArrBounds(0, size-1)
 	shuffleArr(app.intArr)
