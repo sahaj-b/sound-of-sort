@@ -14,7 +14,7 @@ This is a Go-based terminal application that visualizes and sonifies a whole bun
 - **Real-time Visualization:** Renders sorting algorithms as a bar graph directly in your terminal.
 - **Sonification:** Every time an array element is accessed or modified, it plays a tone (pitch corresponds to the element's value)
 - **Interactive:** Change algorithms, speed, volume, array size and reshuffle on the fly.
-- **Image Mode:** Pipe ASCII/ANSI art via stdin with `-img`
+- **Image Mode:** Pipe ASCII/Unicode art via stdin with `-img`
 - **Algorithms:** Includes a loads of classic (and not-so-classic) sorting algorithms (you can add your own too)
 
 ---
@@ -87,7 +87,7 @@ You can customize the startup state. If you don't, it uses sane defaults.
 | `-horiz`  | Horizontal image mode (sort rows instead of columns) | `false`   |
 | `-help`   | Show this help message and exit                     | `false`   |
 
-Image mode: when `-img` is set the program reads an ANSI/ASCII image from stdin, and uses its width as the array length. The `-size` flag is ignored in this mode.
+Image mode: when `-img` is set the program reads an Unicode/ASCII image from stdin, and uses its width as the array length. The `-size` flag is ignored in this mode.
 
 **Example:** Start with the Bogo Sort on a tiny array
 
@@ -97,9 +97,9 @@ Image mode: when `-img` is set the program reads an ANSI/ASCII image from stdin,
 
 -----
 
-## Image Mode (ASCII / ANSI Art Sorting)
+## Image Mode (ASCII / Unicode Art Sorting)
 
-Pipe any ASCII/ANSI colored art into this beast with `-img`.  
+Pipe any ASCII/Unicode colored art into this beast with `-img`.  
 By default, individual columns of the image are shuffled and sorted (the image visually reassembles).  
 
 Basic usage:
