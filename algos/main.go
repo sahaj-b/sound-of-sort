@@ -34,5 +34,8 @@ var Sorts = []struct {
 	{"Radix Sort (LSD)", "radix", radixSortLSD},
 	{"Tournament Sort", "tournament", tournamentSort},
 	{"Introsort", "introsort", introsort},
+	{"Odd-Even Sort", "oddeven", oddEvenSort},
+	{"Cycle Sort", "cycle", cycleSort},
+	{"Strand Sort", "strand", strandSort},
 	{"Bogo Sort", "bogo", bogoSort},
 }

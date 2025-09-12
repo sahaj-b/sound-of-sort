@@ -34,6 +34,11 @@ This is a Go-based terminal application that visualizes and sonifies a whole bun
 - Radix Sort (LSD)
 - Timsort
 - Bitonic Sort
+- Tournament Sort
+- Introsort
+- Odd-Even Sort
+- Cycle Sort
+- Strand Sort
 - Bogo Sort
 
 ---
