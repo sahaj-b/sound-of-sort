@@ -33,6 +33,6 @@ var Sorts = []struct {
 	{"Timsort", "timsort", timsort},
 	{"Radix Sort (LSD)", "radix", radixSortLSD},
 	{"Tournament Sort", "tournament", tournamentSort},
-	{"Hybrid Sort", "hybrid", hybridSort},
+	{"Introsort", "introsort", introsort},
 	{"Bogo Sort", "bogo", bogoSort},
 }

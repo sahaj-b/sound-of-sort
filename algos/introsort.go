@@ -2,36 +2,36 @@ package algos
 
 import "context"
 
-const hybridThreshold = 10
+const introsortThreshold = 10
 const maxDepth = 32
 
-func hybridSort(ctx context.Context, arr ArrObj) {
-	hybridSortRecurse(ctx, arr, 0, arr.Len()-1, maxDepth)
+func introsort(ctx context.Context, arr ArrObj) {
+	introsortRecurse(ctx, arr, 0, arr.Len()-1, maxDepth)
 }
 
-func hybridSortRecurse(ctx context.Context, arr ArrObj, low, high, depth int) {
+func introsortRecurse(ctx context.Context, arr ArrObj, low, high, depth int) {
 	if high <= low {
 		return
 	}
 
 	size := high - low + 1
 
-	if size <= hybridThreshold {
-		hybridInsertionSort(ctx, arr, low, high)
+	if size <= introsortThreshold {
+		introsortInsertionSort(ctx, arr, low, high)
 		return
 	}
 
 	if depth == 0 {
-		hybridHeapSort(ctx, arr, low, high)
+		introsortHeapSort(ctx, arr, low, high)
 		return
 	}
 
-	pivot := hybridPartition(ctx, arr, low, high)
-	hybridSortRecurse(ctx, arr, low, pivot-1, depth-1)
-	hybridSortRecurse(ctx, arr, pivot+1, high, depth-1)
+	pivot := introsortPartition(ctx, arr, low, high)
+	introsortRecurse(ctx, arr, low, pivot-1, depth-1)
+	introsortRecurse(ctx, arr, pivot+1, high, depth-1)
 }
 
-func hybridInsertionSort(ctx context.Context, arr ArrObj, low, high int) {
+func introsortInsertionSort(ctx context.Context, arr ArrObj, low, high int) {
 	for i := low + 1; i <= high; i++ {
 		key := arr.Get(ctx, i)
 		j := i - 1
@@ -43,7 +43,7 @@ func hybridInsertionSort(ctx context.Context, arr ArrObj, low, high int) {
 	}
 }
 
-func hybridPartition(ctx context.Context, arr ArrObj, low, high int) int {
+func introsortPartition(ctx context.Context, arr ArrObj, low, high int) int {
 	medianOfThree(ctx, arr, low, high)
 	pivot := arr.Get(ctx, high)
 	i := low - 1
@@ -72,20 +72,20 @@ func medianOfThree(ctx context.Context, arr ArrObj, low, high int) {
 	}
 }
 
-func hybridHeapSort(ctx context.Context, arr ArrObj, low, high int) {
+func introsortHeapSort(ctx context.Context, arr ArrObj, low, high int) {
 	n := high - low + 1
 
 	for i := n/2 - 1; i >= 0; i-- {
-		hybridHeapify(ctx, arr, low, n, i)
+		introsortHeapify(ctx, arr, low, n, i)
 	}
 
 	for i := n - 1; i > 0; i-- {
 		arr.Swap(ctx, low, low+i)
-		hybridHeapify(ctx, arr, low, i, 0)
+		introsortHeapify(ctx, arr, low, i, 0)
 	}
 }
 
-func hybridHeapify(ctx context.Context, arr ArrObj, offset, n, i int) {
+func introsortHeapify(ctx context.Context, arr ArrObj, offset, n, i int) {
 	largest := i
 	left := 2*i + 1
 	right := 2*i + 2
@@ -100,6 +100,6 @@ func hybridHeapify(ctx context.Context, arr ArrObj, offset, n, i int) {
 
 	if largest != i {
 		arr.Swap(ctx, offset+i, offset+largest)
-		hybridHeapify(ctx, arr, offset, n, largest)
+		introsortHeapify(ctx, arr, offset, n, largest)
 	}
 }
