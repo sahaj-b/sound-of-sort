@@ -91,7 +91,7 @@ func (app *App) handleInput(input string) bool {
 		for {
 			currentDelay := app.delay.Load()
 
-			newDelay := max(50*int64(time.Microsecond), currentDelay-(100*int64(time.Microsecond)))
+			newDelay := max(1*int64(time.Microsecond), currentDelay-(100*int64(time.Microsecond)))
 
 			// this returns false if the currentDelay got changed since we loaded it
 			if app.delay.CompareAndSwap(currentDelay, newDelay) {
