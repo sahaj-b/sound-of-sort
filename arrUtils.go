@@ -6,7 +6,7 @@ import (
 
 func getSequenceArr(start, length int) []int {
 	if length < 1 {
-		panic("bruh")
+		panic("invalid array length: must be at least 1")
 	}
 	arr := make([]int, length)
 	for i := range arr {

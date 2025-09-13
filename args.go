@@ -65,6 +65,8 @@ func (app *App) parseArgs() bool {
 	}
 
 	app.currentSize.Store(int32(*initialSize))
+	app.minVal = 1
+	app.maxVal = 100
 
 	return false
 }

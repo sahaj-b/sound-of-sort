@@ -25,32 +25,39 @@ const (
 	moveToTop  = "\x1b[H"
 	bggray     = "\x1b[48;5;236m"
 	cyan       = "\x1b[36m"
+
+	statusBarHeight    = 3
+	defaultTermWidth   = 80
+	defaultTermHeight  = 24
+	statusSeparatorLen = 3
+	delayIncrement     = 100 * int64(time.Microsecond)
+	minDelayInterval   = 1 * int64(time.Microsecond)
+	volumeIncrement    = 0.005
+	volumeDecrement    = 0.01
+	maxVolume          = 1.0
+	minVolume          = 0.0
+	arraySizeStep      = 10
 )
 
-var (
-	termWidth  int
-	termHeight int
-	graphChar  string
-)
-
-func initUI() (restore func()) {
+func (app *App) initUI() (restore func()) {
 	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
 	if err != nil {
-		// No TTY available, run in non-interactive mode
 		return func() {}
 	}
 
 	oldState, err := term.MakeRaw(int(tty.Fd()))
 	if err != nil {
-		log.Fatal("Error setting terminal to raw mode:", err)
+		log.Fatalf("Failed to set terminal to raw mode: %v", err)
 	}
 
 	width, height, err := term.GetSize(int(tty.Fd()))
 	if err != nil {
-		fmt.Println("Error getting terminal size:", err)
+		log.Printf("Failed to get terminal size, using defaults: %v", err)
+		app.termWidth, app.termHeight = defaultTermWidth, defaultTermHeight
+	} else {
+		app.termWidth, app.termHeight = width, height
 	}
 
-	termWidth, termHeight = width, height
 	fmt.Print(hideCursor)
 	fmt.Print(clear)
 	return func() {
@@ -84,34 +91,28 @@ func (app *App) handleInput(input string) bool {
 	case "q", "\x03": // Ctrl+C
 		return true
 
-	case "w": // increase delay
-		app.delay.Add(100 * int64(time.Microsecond))
+	case "w":
+		app.delay.Add(delayIncrement)
 
-	case "s": // decrease delay
-		// use a CAS loop
+	case "s":
 		for {
 			currentDelay := app.delay.Load()
-
-			newDelay := max(1*int64(time.Microsecond), currentDelay-(100*int64(time.Microsecond)))
-
-			// this returns false if the currentDelay got changed since we loaded it
+			newDelay := max(minDelayInterval, currentDelay-delayIncrement)
 			if app.delay.CompareAndSwap(currentDelay, newDelay) {
 				break
 			}
 		}
 
-	case "k", "\x1b[A": // Up arrow
+	case "k", "\x1b[A":
 		oldBits := app.volume.Load()
 		oldFloat := math.Float64frombits(oldBits)
-
-		newFloat := min(oldFloat+0.005, 1.0)
-
+		newFloat := min(oldFloat+volumeIncrement, maxVolume)
 		newBits := math.Float64bits(newFloat)
 		app.volume.Store(newBits)
 
-	case "j", "\x1b[B": // Down arrow
+	case "j", "\x1b[B":
 		oldFloat := math.Float64frombits(app.volume.Load())
-		newFloat := max(0.0, oldFloat-0.01)
+		newFloat := max(minVolume, oldFloat-volumeDecrement)
 		newBits := math.Float64bits(newFloat)
 		app.volume.Store(newBits)
 
@@ -125,18 +126,18 @@ func (app *App) handleInput(input string) bool {
 		newIndex := app.currentSortIndex.Add(1)
 		app.currentSortIndex.Store(newIndex % int32(len(algos.Sorts)))
 
-	case "a": // decrease array size
+	case "a":
 		if app.imgMode {
 			return false
 		}
-		newSize := max(0, app.currentSize.Add(-10))
+		newSize := max(0, app.currentSize.Add(-arraySizeStep))
 		app.currentSize.Store(newSize)
 
-	case "d": // increase array size
+	case "d":
 		if app.imgMode {
 			return false
 		}
-		newSize := app.currentSize.Add(10)
+		newSize := app.currentSize.Add(arraySizeStep)
 		app.currentSize.Store(newSize)
 
 	case "r": // shuffle array
@@ -145,24 +146,24 @@ func (app *App) handleInput(input string) bool {
 	return false
 }
 
-func arrGraph(arr []int, colors []string, noColors bool) []string {
-	graphHeight := termHeight - 3
+func (app *App) arrGraph(arr []int, colors []string, noColors bool) []string {
+	graphHeight := app.termHeight - statusBarHeight
 	if len(arr) != len(colors) {
 		log.Fatal("arr and colors must have the same length")
 	}
-	graphChar = "█▊" // █ ▇ ▉ ▊ ▋ ▌
-	if termWidth < 2*len(arr) {
+	graphChar := "█▊"
+	if app.termWidth < 2*len(arr) {
 		graphChar = "▊"
 	}
 	output := make([]string, graphHeight)
-	denom := maxVal - minVal
+	denom := app.maxVal - app.minVal
 	if denom == 0 {
 		denom = 1
 	}
 
 	for i := range output {
 		for j := range arr {
-			val := graphHeight * (arr[j] - minVal) / denom
+			val := graphHeight * (arr[j] - app.minVal) / denom
 			if graphHeight-i <= val || i == graphHeight-1 {
 				if noColors {
 					output[i] += graphChar
@@ -287,15 +288,15 @@ func (app *App) render(graph []string, sortName string) {
 		statusLen += len(s)
 	}
 	if !app.noColors {
-		statusLen += 3 * (len(statusStrs) - 1)
+		statusLen += statusSeparatorLen * (len(statusStrs) - 1)
 	} else {
-		statusLen += 3 * (len(statusStrs) - 1) // for " | "
+		statusLen += statusSeparatorLen * (len(statusStrs) - 1)
 	}
-	statusPadding := max(0, (termWidth-statusLen)/2)
+	statusPadding := max(0, (app.termWidth-statusLen)/2)
 	fmt.Println(strings.Repeat(" ", statusPadding) + statusStr + "\r\n\r")
 
 	w := getLineWidth(graph[0])
-	graphPadding := max(0, (termWidth-w)/2)
+	graphPadding := max(0, (app.termWidth-w)/2)
 	for _, line := range graph {
 		if app.noColors {
 			fmt.Println(strings.Repeat(" ", graphPadding) + line + "\r")

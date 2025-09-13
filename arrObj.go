@@ -10,12 +10,12 @@ import (
 )
 
 type visArr struct {
-	mu                sync.RWMutex
-	arr               []int
-	colors            []string
-	delay             *atomic.Int64
-	volume            *atomic.Uint64
-	skipReadWriteClrs bool
+	mu                  sync.RWMutex
+	arr                 []int
+	colors              []string
+	delay               *atomic.Int64
+	skipReadWriteColors bool
+	app                 *App
 }
 
 const (
@@ -23,13 +23,13 @@ const (
 	writeClr = green
 )
 
-func newVisualizer(arr []int, delay *atomic.Int64, volume *atomic.Uint64, skipReadWriteClrs bool) algos.ArrObj {
+func newVisualizer(arr []int, delay *atomic.Int64, skipReadWriteColors bool, app *App) algos.ArrObj {
 	return &visArr{
-		arr:               arr,
-		colors:            make([]string, len(arr)),
-		delay:             delay,
-		volume:            volume,
-		skipReadWriteClrs: skipReadWriteClrs,
+		arr:                 arr,
+		colors:              make([]string, len(arr)),
+		delay:               delay,
+		skipReadWriteColors: skipReadWriteColors,
+		app:                 app,
 	}
 }
 
@@ -73,10 +73,10 @@ func (v *visArr) Get(ctx context.Context, ind int) int {
 	defer v.mu.Unlock()
 
 	val := v.arr[ind]
-	if !v.skipReadWriteClrs {
+	if !v.skipReadWriteColors {
 		v.colors[ind] = readClr
 	}
-	playBeepArr(val, v.volume)
+	v.app.playBeepArr(val)
 	return val
 }
 
@@ -86,11 +86,11 @@ func (v *visArr) Set(ctx context.Context, ind, val int) {
 	defer v.mu.Unlock()
 
 	v.arr[ind] = val
-	if !v.skipReadWriteClrs {
+	if !v.skipReadWriteColors {
 		v.colors[ind] = writeClr
 	}
 
-	playBeepArr(v.arr[ind], v.volume)
+	v.app.playBeepArr(v.arr[ind])
 }
 
 func (v *visArr) Swap(ctx context.Context, i, j int) {
@@ -99,11 +99,11 @@ func (v *visArr) Swap(ctx context.Context, i, j int) {
 	defer v.mu.Unlock()
 
 	v.arr[i], v.arr[j] = v.arr[j], v.arr[i]
-	if !v.skipReadWriteClrs {
+	if !v.skipReadWriteColors {
 		v.colors[i] = writeClr
 		v.colors[j] = writeClr
 	}
 
-	playBeepArr(v.arr[i], v.volume)
-	playBeepArr(v.arr[j], v.volume)
+	v.app.playBeepArr(v.arr[i])
+	v.app.playBeepArr(v.arr[j])
 }

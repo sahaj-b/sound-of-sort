@@ -49,6 +49,12 @@ type App struct {
 	noReadWriteColors bool
 	intArr            []int
 	imgArr            []string
+
+	minVal       int
+	maxVal       int
+	lastBeepTime atomic.Int64
+	termWidth    int
+	termHeight   int
 }
 
 func NewApp() *App {
@@ -64,13 +70,13 @@ func NewApp() *App {
 	size := int(app.currentSize.Load())
 	if app.imgMode {
 		img, err := readImageFromStdin()
-		makeRectangular(img)
 		if err != nil {
-			log.Fatal("Error reading image from stdin:", err)
+			log.Fatalf("Failed to read image from stdin: %v", err)
 		}
 		if len(img) == 0 {
 			log.Fatal("No image data provided in stdin")
 		}
+		makeRectangular(img)
 		app.hasColors = imageHasColors(img)
 		if app.horizontal {
 			// horizontal: rows are the elements
@@ -79,7 +85,7 @@ func NewApp() *App {
 		} else {
 			transposed, err := transpose(img)
 			if err != nil {
-				log.Fatal("Error processing image:", err)
+				log.Fatalf("Failed to process image: %v", err)
 			}
 			size = len(transposed)
 			app.imgArr = transposed
@@ -87,16 +93,39 @@ func NewApp() *App {
 	}
 	app.currentSize.Store(int32(size))
 	app.intArr = getSequenceArr(0, size)
-	setArrBounds(0, size-1)
+	app.setArrBounds(0, size-1)
 	shuffleArr(app.intArr)
 
 	return app
 }
 
+func (app *App) setArrBounds(min, max int) {
+	app.minVal = min
+	app.maxVal = max
+}
+
+func (app *App) playBeepArr(val int) {
+	now := time.Now().UnixNano()
+	last := app.lastBeepTime.Load()
+
+	if now-last < minBeepInterval.Nanoseconds() {
+		return
+	}
+
+	if !app.lastBeepTime.CompareAndSwap(last, now) {
+		return
+	}
+
+	pitch := minPitch + (maxPitch-minPitch)*float64(val-app.minVal)/float64(app.maxVal-app.minVal)
+	playSine(pitch, soundDuration, &app.volume)
+}
+
 func (app *App) Run() {
-	restoreUI := initUI()
+	restoreUI := app.initUI()
 	defer restoreUI()
-	initAudio()
+	if err := initAudio(); err != nil {
+		log.Fatal("Failed to initialize audio:", err)
+	}
 
 	go inputReader(app.inputChan)
 	go app.renderLoop()
@@ -114,10 +143,10 @@ func (app *App) Run() {
 		if currentSizeVal != previousSize || app.shuffleRequested.Load() {
 			if app.imgMode {
 				app.intArr = getSequenceArr(0, int(currentSizeVal))
-				setArrBounds(0, int(currentSizeVal)-1)
+				app.setArrBounds(0, int(currentSizeVal)-1)
 			} else {
 				app.intArr = getSequenceArr(1, int(currentSizeVal))
-				setArrBounds(1, int(currentSizeVal))
+				app.setArrBounds(1, int(currentSizeVal))
 			}
 			shuffleArr(app.intArr)
 			previousSize = currentSizeVal
@@ -133,20 +162,22 @@ func (app *App) Run() {
 func (app *App) renderLoop() {
 	for state := range app.stateChan {
 		var graph []string
-		defer func() {
-			if r := recover(); r != nil {
-				// just skip this frame; likely transient length mismatch
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					// just skip this frame; likely transient length mismatch
+				}
+			}()
+			if app.imgMode {
+				if app.horizontal {
+					graph = imgGraphHorizontal(state.Arr, app.imgArr, state.Colors, app.noColors)
+				} else {
+					graph = imgGraph(state.Arr, app.imgArr, state.Colors, app.noColors)
+				}
+			} else {
+				graph = app.arrGraph(state.Arr, state.Colors, app.noColors)
 			}
 		}()
-		if app.imgMode {
-			if app.horizontal {
-				graph = imgGraphHorizontal(state.Arr, app.imgArr, state.Colors, app.noColors)
-			} else {
-				graph = imgGraph(state.Arr, app.imgArr, state.Colors, app.noColors)
-			}
-		} else {
-			graph = arrGraph(state.Arr, state.Colors, app.noColors)
-		}
 		if len(graph) == 0 {
 			continue
 		}
@@ -166,7 +197,7 @@ func (app *App) runSortCycle() bool {
 	currentIndex := app.currentSortIndex.Load()
 	currentSortName := algos.Sorts[currentIndex].Name
 
-	arr := newVisualizer(arrToSort, &app.delay, &app.volume, app.noReadWriteColors || (app.imgMode && app.hasColors))
+	arr := newVisualizer(arrToSort, &app.delay, app.noReadWriteColors || (app.imgMode && app.hasColors), app)
 	sortCtx, sortCancel := context.WithCancel(app.ctx)
 	defer sortCancel()
 

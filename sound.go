@@ -18,23 +18,12 @@ const (
 	minBeepInterval = 5 * time.Millisecond
 )
 
-var (
-	minVal       = 1
-	maxVal       = 100
-	lastBeepTime atomic.Int64
-)
-
-func setArrBounds(min, max int) {
-	minVal = min
-	maxVal = max
-}
-
-func initAudio() {
+func initAudio() error {
 	err := speaker.Init(sampleRate, sampleRate.N(time.Second/20))
 	if err != nil {
-		fmt.Println("Error initializing speaker:", err)
-		return
+		return fmt.Errorf("failed to initialize speaker: %w", err)
 	}
+	return nil
 }
 
 func playSine(pitch float64, duration time.Duration, volume *atomic.Uint64) {
@@ -79,20 +68,4 @@ func playSine(pitch float64, duration time.Duration, volume *atomic.Uint64) {
 	})
 
 	speaker.Play(streamer)
-}
-
-func playBeepArr(val int, volume *atomic.Uint64) {
-	now := time.Now().UnixNano()
-	last := lastBeepTime.Load()
-
-	if now-last < minBeepInterval.Nanoseconds() {
-		return
-	}
-
-	if !lastBeepTime.CompareAndSwap(last, now) {
-		return
-	}
-
-	pitch := minPitch + (maxPitch-minPitch)*float64(val-minVal)/float64(maxVal-minVal)
-	playSine(pitch, soundDuration, volume)
 }
