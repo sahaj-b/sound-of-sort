@@ -6,12 +6,22 @@ import (
 	"log"
 	"math"
 	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/sahaj-b/sound-of-sort/algos"
 )
+
+func imageHasColors(img []string) bool {
+	for _, line := range img {
+		if strings.Contains(line, "\x1b[") {
+			return true
+		}
+	}
+	return false
+}
 
 type VisState struct {
 	Arr      []int
@@ -35,6 +45,7 @@ type App struct {
 	fps        int
 	imgMode    bool
 	horizontal bool
+	hasColors  bool
 	intArr     []int
 	imgArr     []string
 }
@@ -72,6 +83,7 @@ func NewApp() *App {
 		if len(img) == 0 {
 			log.Fatal("No image data provided in stdin")
 		}
+		app.hasColors = imageHasColors(img)
 		if app.horizontal {
 			// horizontal: rows are the elements
 			size = len(img)
@@ -166,7 +178,7 @@ func (app *App) runSortCycle() bool {
 	currentIndex := app.currentSortIndex.Load()
 	currentSortName := algos.Sorts[currentIndex].Name
 
-	arr := newVisualizer(arrToSort, &app.delay, &app.volume)
+	arr := newVisualizer(arrToSort, &app.delay, &app.volume, app.imgMode && app.hasColors)
 	sortCtx, sortCancel := context.WithCancel(app.ctx)
 	defer sortCancel()
 

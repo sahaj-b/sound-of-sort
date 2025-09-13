@@ -9,6 +9,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/acarl005/stripansi"
 	"github.com/sahaj-b/sound-of-sort/algos"
 	"golang.org/x/term"
 )
@@ -189,14 +190,19 @@ func imgGraph(arr []int, img []string, colors []string) []string {
 		}
 		col := parseCells(img[val])
 		for r := 0; r < height; r++ {
-			cell := " "
-			if r < len(col) {
-				cell = col[r]
-			}
-			if colors[i] != "" {
-				output[r] += colors[i] + cell + reset
+			if r < len(col) && col[r] != "" {
+				if colors[i] != "" {
+					stripped := stripansi.Strip(col[r])
+					if len(stripped) > 0 {
+						output[r] += colors[i] + string([]rune(stripped)[0]) + reset
+					} else {
+						output[r] += " "
+					}
+				} else {
+					output[r] += col[r] + reset
+				}
 			} else {
-				output[r] += cell
+				output[r] += " "
 			}
 		}
 	}
