@@ -100,7 +100,7 @@ func (app *App) handleInput(input string) bool {
 			}
 		}
 
-	case "\x1b[A": // Up arrow
+	case "k", "\x1b[A": // Up arrow
 		oldBits := app.volume.Load()
 		oldFloat := math.Float64frombits(oldBits)
 
@@ -109,21 +109,21 @@ func (app *App) handleInput(input string) bool {
 		newBits := math.Float64bits(newFloat)
 		app.volume.Store(newBits)
 
-	case "\x1b[B": // Down arrow
+	case "j", "\x1b[B": // Down arrow
 		oldFloat := math.Float64frombits(app.volume.Load())
 		newFloat := max(0.0, oldFloat-0.01)
 		newBits := math.Float64bits(newFloat)
 		app.volume.Store(newBits)
 
-	case "p", "\x1b[D": // Left arrow
-		newIndex := app.currentSortIndex.Add(1)
-		app.currentSortIndex.Store(newIndex % int32(len(algos.Sorts)))
-	case "n", "\x1b[C": // Right arrow
+	case "h", "\x1b[D": // Left arrow
 		newIndex := app.currentSortIndex.Add(-1)
 		if newIndex < 0 {
 			newIndex = int32(len(algos.Sorts) - 1)
 		}
 		app.currentSortIndex.Store(newIndex)
+	case "l", "\x1b[C": // Right arrow
+		newIndex := app.currentSortIndex.Add(1)
+		app.currentSortIndex.Store(newIndex % int32(len(algos.Sorts)))
 
 	case "a": // decrease array size
 		if app.imgMode {
@@ -145,7 +145,7 @@ func (app *App) handleInput(input string) bool {
 	return false
 }
 
-func arrGraph(arr []int, colors []string) []string {
+func arrGraph(arr []int, colors []string, noColors bool) []string {
 	graphHeight := termHeight - 3
 	if len(arr) != len(colors) {
 		log.Fatal("arr and colors must have the same length")
@@ -164,7 +164,11 @@ func arrGraph(arr []int, colors []string) []string {
 		for j := range arr {
 			val := graphHeight * (arr[j] - minVal) / denom
 			if graphHeight-i <= val || i == graphHeight-1 {
-				output[i] += colors[j] + graphChar + reset
+				if noColors {
+					output[i] += graphChar
+				} else {
+					output[i] += colors[j] + graphChar + reset
+				}
 			} else {
 				output[i] += strings.Repeat(" ", utf8.RuneCountInString(graphChar))
 			}
@@ -173,7 +177,7 @@ func arrGraph(arr []int, colors []string) []string {
 	return output
 }
 
-func imgGraph(arr []int, img []string, colors []string) []string {
+func imgGraph(arr []int, img []string, colors []string, noColors bool) []string {
 	if len(img) == 0 {
 		return img
 	}
@@ -191,7 +195,14 @@ func imgGraph(arr []int, img []string, colors []string) []string {
 		col := parseCells(img[val])
 		for r := 0; r < height; r++ {
 			if r < len(col) && col[r] != "" {
-				if colors[i] != "" {
+				if noColors {
+					stripped := stripansi.Strip(col[r])
+					if len(stripped) > 0 {
+						output[r] += string([]rune(stripped)[0])
+					} else {
+						output[r] += " "
+					}
+				} else if colors[i] != "" {
 					stripped := stripansi.Strip(col[r])
 					if len(stripped) > 0 {
 						output[r] += colors[i] + string([]rune(stripped)[0]) + reset
@@ -209,7 +220,7 @@ func imgGraph(arr []int, img []string, colors []string) []string {
 	return output
 }
 
-func imgGraphHorizontal(arr []int, img []string, colors []string) []string {
+func imgGraphHorizontal(arr []int, img []string, colors []string, noColors bool) []string {
 	if len(img) == 0 {
 		return img
 	}
@@ -226,21 +237,30 @@ func imgGraphHorizontal(arr []int, img []string, colors []string) []string {
 			continue
 		}
 		line := img[val]
-		c := ""
-		if i < len(colors) {
-			c = colors[i]
-		}
-		if c != "" {
-			output[i] = c + line + reset
+		if noColors {
+			output[i] = stripansi.Strip(line)
 		} else {
-			output[i] = line
+			c := ""
+			if i < len(colors) {
+				c = colors[i]
+			}
+			if c != "" {
+				output[i] = c + line + reset
+			} else {
+				output[i] = line
+			}
 		}
 	}
 	return output
 }
 
 func (app *App) render(graph []string, sortName string) {
-	fmt.Print(moveToTop)
+	if !app.noColors {
+		fmt.Print(moveToTop)
+	} else {
+		fmt.Print("\r")
+	}
+
 	arrSizeStr := fmt.Sprintf("a/d Arr Size: %d", app.currentSize.Load())
 	if app.imgMode {
 		arrSizeStr = fmt.Sprintf("Image Size: %d", app.currentSize.Load())
@@ -254,19 +274,33 @@ func (app *App) render(graph []string, sortName string) {
 		"q to quit",
 	}
 
-	n := len(statusStrs)
-	statusStr := bggray + cyan + " " + strings.Join(statusStrs[:n-1], " "+reset+" "+bggray+" "+cyan) + " " + reset + " " + bggray + red + " " + statusStrs[n-1] + " " + reset
+	var statusStr string
+	if app.noColors {
+		statusStr = strings.Join(statusStrs, " | ")
+	} else {
+		n := len(statusStrs)
+		statusStr = bggray + cyan + " " + strings.Join(statusStrs[:n-1], " "+reset+" "+bggray+" "+cyan) + " " + reset + " " + bggray + red + " " + statusStrs[n-1] + " " + reset
+	}
+
 	statusLen := 0
 	for _, s := range statusStrs {
 		statusLen += len(s)
 	}
-	statusLen += 3 * (len(statusStrs) - 1)
+	if !app.noColors {
+		statusLen += 3 * (len(statusStrs) - 1)
+	} else {
+		statusLen += 3 * (len(statusStrs) - 1) // for " | "
+	}
 	statusPadding := max(0, (termWidth-statusLen)/2)
 	fmt.Println(strings.Repeat(" ", statusPadding) + statusStr + "\r\n\r")
 
 	w := getLineWidth(graph[0])
 	graphPadding := max(0, (termWidth-w)/2)
 	for _, line := range graph {
-		fmt.Println(reset + strings.Repeat(" ", graphPadding) + line + reset + clearLine + "\r")
+		if app.noColors {
+			fmt.Println(strings.Repeat(" ", graphPadding) + line + "\r")
+		} else {
+			fmt.Println(reset + strings.Repeat(" ", graphPadding) + line + reset + clearLine + "\r")
+		}
 	}
 }

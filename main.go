@@ -42,12 +42,14 @@ type App struct {
 	delay            atomic.Int64
 	volume           atomic.Uint64
 
-	fps        int
-	imgMode    bool
-	horizontal bool
-	hasColors  bool
-	intArr     []int
-	imgArr     []string
+	fps               int
+	imgMode           bool
+	horizontal        bool
+	hasColors         bool
+	noColors          bool
+	noReadWriteColors bool
+	intArr            []int
+	imgArr            []string
 }
 
 func NewApp() *App {
@@ -63,6 +65,8 @@ func NewApp() *App {
 	app.fps = *fpsFlag
 	app.imgMode = *imgFlag
 	app.horizontal = *horizontalFlag
+	app.noColors = *noColorsFlag
+	app.noReadWriteColors = *noReadWriteColorsFlag
 
 	app.delay.Store(int64(*initialDelay * float64(time.Millisecond)))
 	app.volume.Store(math.Float64bits(*initialVolume))
@@ -152,12 +156,12 @@ func (app *App) renderLoop() {
 		}()
 		if app.imgMode {
 			if app.horizontal {
-				graph = imgGraphHorizontal(state.Arr, app.imgArr, state.Colors)
+				graph = imgGraphHorizontal(state.Arr, app.imgArr, state.Colors, app.noColors)
 			} else {
-				graph = imgGraph(state.Arr, app.imgArr, state.Colors)
+				graph = imgGraph(state.Arr, app.imgArr, state.Colors, app.noColors)
 			}
 		} else {
-			graph = arrGraph(state.Arr, state.Colors)
+			graph = arrGraph(state.Arr, state.Colors, app.noColors)
 		}
 		if len(graph) == 0 {
 			continue
@@ -178,7 +182,7 @@ func (app *App) runSortCycle() bool {
 	currentIndex := app.currentSortIndex.Load()
 	currentSortName := algos.Sorts[currentIndex].Name
 
-	arr := newVisualizer(arrToSort, &app.delay, &app.volume, app.imgMode && app.hasColors)
+	arr := newVisualizer(arrToSort, &app.delay, &app.volume, app.noReadWriteColors || (app.imgMode && app.hasColors))
 	sortCtx, sortCancel := context.WithCancel(app.ctx)
 	defer sortCancel()
 

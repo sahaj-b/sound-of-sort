@@ -10,12 +10,12 @@ import (
 )
 
 type visArr struct {
-	mu         sync.RWMutex
-	arr        []int
-	colors     []string
-	delay      *atomic.Int64
-	volume     *atomic.Uint64
-	skipColors bool
+	mu                sync.RWMutex
+	arr               []int
+	colors            []string
+	delay             *atomic.Int64
+	volume            *atomic.Uint64
+	skipReadWriteClrs bool
 }
 
 const (
@@ -23,13 +23,13 @@ const (
 	writeClr = green
 )
 
-func newVisualizer(arr []int, delay *atomic.Int64, volume *atomic.Uint64, skipColors bool) algos.ArrObj {
+func newVisualizer(arr []int, delay *atomic.Int64, volume *atomic.Uint64, skipReadWriteClrs bool) algos.ArrObj {
 	return &visArr{
-		arr:        arr,
-		colors:     make([]string, len(arr)),
-		delay:      delay,
-		volume:     volume,
-		skipColors: skipColors,
+		arr:               arr,
+		colors:            make([]string, len(arr)),
+		delay:             delay,
+		volume:            volume,
+		skipReadWriteClrs: skipReadWriteClrs,
 	}
 }
 
@@ -73,7 +73,7 @@ func (v *visArr) Get(ctx context.Context, ind int) int {
 	defer v.mu.Unlock()
 
 	val := v.arr[ind]
-	if !v.skipColors {
+	if !v.skipReadWriteClrs {
 		v.colors[ind] = readClr
 	}
 	playBeepArr(val, v.volume)
@@ -86,7 +86,7 @@ func (v *visArr) Set(ctx context.Context, ind, val int) {
 	defer v.mu.Unlock()
 
 	v.arr[ind] = val
-	if !v.skipColors {
+	if !v.skipReadWriteClrs {
 		v.colors[ind] = writeClr
 	}
 
@@ -99,7 +99,7 @@ func (v *visArr) Swap(ctx context.Context, i, j int) {
 	defer v.mu.Unlock()
 
 	v.arr[i], v.arr[j] = v.arr[j], v.arr[i]
-	if !v.skipColors {
+	if !v.skipReadWriteClrs {
 		v.colors[i] = writeClr
 		v.colors[j] = writeClr
 	}
