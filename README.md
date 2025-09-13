@@ -75,24 +75,38 @@ go build
 
 You can customize the startup state. If you don't, it uses sane defaults.
 
-| Flag      | Description                                         | Default   |
-| :-------- | :-------------------------------------------------- | :-------- |
-| `-sort`   | Initial sorting algorithm to use                    | `quick`   |
-| `-size`   | Initial array size (ignored in image mode)          | `100`     |
-| `-delay`  | Initial delay between operations (ms)               | `5`       |
-| `-volume` | Initial volume (0.0 to 1.0)                         | `0.1`     |
-| `-fps`    | Rendering frames per second                         | `60`      |
-| `-list`   | List all available sorting algorithms and exit      | `false`   |
-| `-img`    | Enable image mode (pipe ASCII art via stdin)        | `false`   |
-| `-horiz`  | Horizontal image mode (sort rows instead of columns) | `false`   |
-| `-help`   | Show this help message and exit                     | `false`   |
+| Flag            | Description                                         | Default   |
+| :-------------- | :-------------------------------------------------- | :-------- |
+| `-sort`         | Initial sorting algorithm to use                    | `quick`   |
+| `-size`         | Initial array size (ignored in image mode)          | `100`     |
+| `-delay`        | Initial delay between operations (ms)               | `5`       |
+| `-volume`       | Initial volume (0.0 to 1.0)                         | `0.1`     |
+| `-fps`          | Rendering frames per second                         | `60`      |
+| `-list`         | List all available sorting algorithms and exit      | `false`   |
+| `-img`          | Enable image mode (pipe ASCII art via stdin)        | `false`   |
+| `-horiz`        | Horizontal image mode (sort rows instead of columns) | `false`   |
+| `-no-colors`    | Strip ALL ANSI colors from output                  | `false`   |
+| `-no-rw-colors` | Disable read/write highlighting colors only         | `false`   |
+| `-help`         | Show this help message and exit                     | `false`   |
 
 Image mode: when `-img` is set the program reads an Unicode/ASCII image from stdin, and uses its width as the array length. The `-size` flag is ignored in this mode.
 
-**Example:** Start with the Bogo Sort on a tiny array
+**Color Options:**
+- `-no-colors`: Strips ALL ANSI color codes from output, producing completely raw text
+- `-no-rw-colors`: Only disables read/write highlighting colors, preserving other colors
+- `NO_COLOR=1`: Environment variable that enables `-no-colors` (follows NO_COLOR standard)
+
+**Examples:**
 
 ```bash
-./sound-of-sort -sort bogo -size 8
+# Start with the Bogo Sort on a tiny array
+sound-of-sort -sort bogo -size 8
+
+# Raw output with no ANSI colors
+sound-of-sort -no-colors -size 50
+
+# Disable only read/write highlight colors but keep other colors
+sound-of-sort -no-rw-colors -size 50
 ```
 
 -----
@@ -105,12 +119,19 @@ By default, individual columns of the image are shuffled and sorted (the image v
 Basic usage:
 
 ```bash
-pixcii -i path/to/image.jpg -c | sound-of-sort -img
-# or
+# Keep original image colors, disable sorting highlights only
+chafa -f symbols path/to/img.jpg | sound-of-sort -img -no-rw-colors
+
+# Horizontal mode with colors
 chafa -f symbols path/to/img.jpg -s 50x50 | sound-of-sort -img -horiz
-# or
-ascii-image-converter path/to/image.jpg | sound-of-sort -img
-# or any other ASCII art generator
+
+# merge sort with a bit more delay on a braille art
+ascii-image-converter path/to/image.jpg --color --braille | sound-of-sort -img -sort merge -delay 7
+
+# Basic colored ASCII art sorting
+pixcii -i path/to/image.jpg -c | sound-of-sort -img
+
+# Any other ASCII/Unicode art generator works too
 ```
 
 -----
@@ -118,14 +139,14 @@ ascii-image-converter path/to/image.jpg | sound-of-sort -img
 ## Controls
 
 
-| Key(s)                 | Action                          |
-| :-------------------   | :----------------------------   |
-| `q` or `Ctrl+C`        | **Quit** the application        |
-| `←` / `→` or `p` / `n` | Cycle through algorithms        |
-| `↑` / `↓`              | Increase / Decrease volume      |
-| `w` / `s`              | Increase / Decrease delay       |
-| `a` / `d`              | Decrease / Increase array size  |
-| `r`                    | **Reshuffle** the current array |
+| Key(s)          | Action                          |
+| :-------------- | :----------------------------   |
+| `q` or `Ctrl+C` | **Quit** the application        |
+| `←` / `→` or `h` / `l` | Cycle through algorithms        |
+| `↑` / `↓` or `k` / `j` | Increase / Decrease volume      |
+| `w` / `s`       | Increase / Decrease delay       |
+| `a` / `d`       | Decrease / Increase array size  |
+| `r`             | **Reshuffle** the current array |
 
 
 ---
