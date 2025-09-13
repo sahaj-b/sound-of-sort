@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"math"
 	"os"
 	"strings"
 	"sync"
@@ -53,31 +52,16 @@ type App struct {
 }
 
 func NewApp() *App {
-	if parseArgs() {
-		os.Exit(0)
-	}
-
 	app := &App{}
-
 	app.ctx, app.cancel = context.WithCancel(context.Background())
 	app.stateChan = make(chan VisState, 1)
 	app.inputChan = make(chan string, 1)
-	app.fps = *fpsFlag
-	app.imgMode = *imgFlag
-	app.horizontal = *horizontalFlag
-	app.noColors = *noColorsFlag
-	app.noReadWriteColors = *noReadWriteColorsFlag
 
-	app.delay.Store(int64(*initialDelay * float64(time.Millisecond)))
-	app.volume.Store(math.Float64bits(*initialVolume))
-	for i, s := range algos.Sorts {
-		if s.Arg == *initialSort {
-			app.currentSortIndex.Store(int32(i))
-			break
-		}
+	if app.parseArgs() {
+		os.Exit(0)
 	}
 
-	size := *initialSize
+	size := int(app.currentSize.Load())
 	if app.imgMode {
 		img, err := readImageFromStdin()
 		makeRectangular(img)
